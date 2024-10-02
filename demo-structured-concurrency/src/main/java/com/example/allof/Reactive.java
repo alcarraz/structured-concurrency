@@ -19,12 +19,8 @@ public class Reactive {
                 checkMerchant(tx.merchantId()));
         CompletableFuture<Boolean> checkPIN = CompletableFuture.supplyAsync(() ->
                 checkPIN(tx.cardNumber(), tx.pinBlock()));
-        boolean success = allOf(checkBalance, checkMerchant, checkPIN).thenApply(_ -> {
-                    checkBalance.join();
-                    checkMerchant.join();
-                    checkPIN.join();
-                    return true;
-                }
+        boolean success = allOf(checkBalance, checkMerchant, checkPIN).thenApply(_ -> 
+                    checkBalance.join() && checkMerchant.join() && checkPIN.join()
         ).exceptionally(e -> {
             e.printStackTrace();
             return false;
