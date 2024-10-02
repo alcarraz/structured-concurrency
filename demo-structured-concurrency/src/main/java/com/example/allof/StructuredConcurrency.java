@@ -20,6 +20,7 @@ public class StructuredConcurrency {
             scope.join().throwIfFailed();
             boolean success = checkBalance.get() && checkMerchant.get() && checkPIN.get();
             System.out.println("All validations completed: " + success );
-        } 
+        }
+        System.out.println("Finishing");
     }
 }
