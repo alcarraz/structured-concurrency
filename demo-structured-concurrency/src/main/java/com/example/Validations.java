@@ -1,0 +1,30 @@
+package com.example;
+
+import java.util.Objects;
+
+import static com.example.Util.sleep;
+
+public class Validations {
+
+    public static final String INVALID_MERCHANT = "invalid-merchant";
+    public static final double BALANCE = 1000;
+    public static final String PIN_BLOCK = "1234";
+
+    public static boolean checkMerchant(String merchantId) {
+        
+        sleep(1000);
+        return !Objects.equals(INVALID_MERCHANT, merchantId); //throw new ValidationException("invalid merchant");
+    }
+    
+    public static boolean checkBalance(String cardNumber, double amount) {
+        if (amount < 0) throw new IllegalArgumentException("negative amount");
+        sleep(2000);
+        return amount <= BALANCE; //throw new ValidationException("insufficient balance");
+    }
+
+    public static boolean checkPIN(String cardNumber, String pinBlock) {
+        //throw new ValidationException("invalid pin");
+        sleep(3000);
+        return Objects.equals(pinBlock, PIN_BLOCK);
+    }
+}
