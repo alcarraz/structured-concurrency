@@ -22,8 +22,7 @@ public class Reactive {
         boolean success = allOf(checkBalance, checkMerchant, checkPIN).thenApply(_ -> 
                     checkBalance.join() && checkMerchant.join() && checkPIN.join()
         ).exceptionally(e -> {
-            e.printStackTrace();
-            return false;
+            throw new RuntimeException(e); //can only throw unchecked exceptions
         }).join();
         System.out.println("All validations completed: " + success);
     }
