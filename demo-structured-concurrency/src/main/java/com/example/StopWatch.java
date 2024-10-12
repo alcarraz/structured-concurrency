@@ -5,16 +5,29 @@ import java.time.Instant;
 
 public class StopWatch {
     Instant start = Instant.now();
-    Duration elapsed() {
+    String additionalDescription = "";
+    
+    public StopWatch() {
+    }
+    
+    public StopWatch(String name) {
+        if (name != null) this.additionalDescription = " for %s".formatted(name);
+    }
+    
+    public Duration elapsed() {
         return Duration.between(start, Instant.now());
     }
-    void reset() {
+   public void reset() {
         start = Instant.now();
     }
     
     @Override
     public String toString() {
-        return "Elapsed time: %s ms".formatted(elapsed().toMillis());
+        return "Elapsed time%s: %s ms".formatted(additionalDescription, elapsed().toMillis());
+    }
+    
+    public static StopWatch start(String name) {
+        return new StopWatch(name);
     }
     
     public static StopWatch start() {
@@ -22,12 +35,19 @@ public class StopWatch {
     }
     
     public static void measureTime(Runnable runnable) {
-        StopWatch stopWatch = start();
+        measureTime(runnable, null);
+    }
+    
+    public static void measureTime(Runnable runnable, String name) {
+        StopWatch stopWatch = start(name);
         try {
             runnable.run();
         } finally {
-            System.out.println(stopWatch);
+            stopWatch.completed();
         }
     }
 
+    public void completed() {
+        System.out.println(this);
+    }
 }
