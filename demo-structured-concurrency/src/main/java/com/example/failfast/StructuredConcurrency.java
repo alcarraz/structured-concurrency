@@ -4,7 +4,6 @@ import com.example.StopWatch;
 import com.example.Transaction;
 import com.example.ValidationException;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.StructuredTaskScope.Subtask;
 
@@ -15,19 +14,26 @@ public class StructuredConcurrency {
         StopWatch.measureTime(() -> {
             Transaction tx = new Transaction("1234567890123456", "1234", 1001.0, "123456");
             try (StructuredTaskScope.ShutdownOnFailure scope = new StructuredTaskScope.ShutdownOnFailure()) {
-                scope.fork(() -> shutdownOnFailure(checkBalance(tx.cardNumber(), tx.amount()), scope));
-                scope.fork(() -> shutdownOnFailure(checkMerchant(tx.merchantId()), scope));
-                scope.fork(() -> shutdownOnFailure(checkPIN(tx.cardNumber(), tx.pinBlock()), scope));
+                Subtask<Boolean> checkBalance 
+                        = scope.fork(() -> throwOnFailure(checkBalance(tx.cardNumber(), tx.amount()), "balance"));
+                Subtask<Boolean> checkMerchant 
+                        = scope.fork((() -> throwOnFailure(checkMerchant(tx.merchantId()), "merchant")));
+                Subtask<Boolean> checkPIN 
+                        = scope.fork(() -> throwOnFailure(checkPIN(tx.cardNumber(), tx.pinBlock()), "pin")); 
                 scope.join();
-                System.out.println("All validations completed: ");
+                System.out.printf("All validations completed: %s%n",  
+                        scope.exception().isEmpty() && checkMerchant.get() && checkBalance.get() && checkPIN.get()
+                );
+                scope.exception().filter(e -> !(e instanceof ValidationException)).ifPresent(Throwable::printStackTrace);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         });
     }
     
-    static boolean shutdownOnFailure(boolean result, StructuredTaskScope.ShutdownOnFailure scope) {
-        if (!result) scope.shutdown();
-        return result;
+    static boolean throwOnFailure(boolean result, String what) throws ValidationException {
+        if (!result) throw new ValidationException(what);
+        return true;
     }
+    
 }
