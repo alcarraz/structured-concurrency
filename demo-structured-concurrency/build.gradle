@@ -1,17 +1,23 @@
 plugins {
     id 'java'
+    id 'application'
 }
 
-group = 'org.example'
+group = 'com.example'
 version = '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
 }
+
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(23)
+        languageVersion = JavaLanguageVersion.of(25)
     }
+}
+
+application {
+    mainClass = 'com.example.DemoRunner'
 }
 
 dependencies {
@@ -19,8 +25,12 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
-test {
+tasks.named('test') {
     useJUnitPlatform()
+}
+
+compileJava {
+    options.compilerArgs += "--enable-preview"
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -33,4 +43,65 @@ tasks.withType(Test).configureEach {
 
 tasks.withType(JavaExec).configureEach {
     jvmArgs += "--enable-preview"
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.addBooleanOption('enable-preview', true)
+}
+
+// Demo tasks
+tasks.register('demoReactive', JavaExec) {
+    group = 'demo'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.demos.ReactiveDemo'
+    args = ['basic']
+}
+
+tasks.register('demoReactiveExceptions', JavaExec) {
+    group = 'demo'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.demos.ReactiveDemo'
+    args = ['exceptions']
+}
+
+tasks.register('demoFixedReactiveFailFast', JavaExec) {
+    group = 'demo'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.demos.ReactiveDemo'
+    args = ['fail-fast']
+}
+
+tasks.register('demoStructuredFailFast', JavaExec) {
+    group = 'demo'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.demos.StructuredDemo'
+    args = ['fail-fast']
+}
+
+tasks.register('demoStructured', JavaExec) {
+    group = 'demo'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.demos.StructuredDemo'
+    args = ['normal']
+}
+
+tasks.register('demoScopedValues', JavaExec) {
+    group = 'demo'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.DemoRunner'
+    args = ['scoped-values']
+}
+
+tasks.register('demoCompare', JavaExec) {
+    group = 'demo'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.DemoRunner'
+    args = ['compare']
+}
+
+tasks.register('demoCompareFailure', JavaExec) {
+    group = 'demo'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.DemoRunner'
+    args = ['compare-failure']
 }
