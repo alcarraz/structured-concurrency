@@ -19,7 +19,7 @@ public class DemoRunner {
             System.out.println("Available demos:");
             System.out.println("  reactive              - CompletableFuture approach (complex, nested)");
             System.out.println("  reactive-exceptions   - Reactive with exceptions (still no fail-fast!)");
-            System.out.println("  fixed-reactive-failfast- 'Fixed' reactive with manual fail-fast (still complex)");
+            System.out.println("  fixed-reactive-failfast - 'Fixed' reactive with manual fail-fast (still complex)");
             System.out.println("  structured            - Structured Concurrency (fail-fast by default)");
             System.out.println("  structured-normal     - Structured Concurrency (await all validations)");
             System.out.println("  scoped-values         - Scoped Values demo (context propagation)");
