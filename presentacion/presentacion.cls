@@ -1,3 +1,5 @@
+%! suppress = DiscouragedUseOfDef
+%! suppress = InclusionLoop
 \ProvidesClass{presentacion}
 
 \LoadClass[aspectratio=169]{beamer}

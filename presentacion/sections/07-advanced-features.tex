@@ -1,4 +1,4 @@
-\section{Features Avanzados}
+\section{Features Avanzados}\label{sec:features-avanzados}
 
 \begin{frame}[fragile]
 \frametitle{Custom Joiners: Estrategias de Coordinación}
@@ -13,6 +13,7 @@
 \end{block}
 
 \vspace{0.5em}
+%! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
 // Custom Joiner: Recoger solo N primeros resultados
 try (var scope = StructuredTaskScope.open(
@@ -31,6 +32,7 @@ try (var scope = StructuredTaskScope.open(
 \begin{frame}[fragile]
 \frametitle{Nested Scopes: Composición Jerárquica}
 
+%! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
 try (var outerScope = StructuredTaskScope.open()) {
     var userData = outerScope.fork(() -> {
@@ -58,6 +60,7 @@ Cancela automáticamente TODOS los scopes anidados si falla el padre
 \begin{frame}[fragile]
 \frametitle{Timeout Patterns: Deadlines con Structured Concurrency}
 
+%! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
 // Timeout con Instant deadline
 Instant deadline = Instant.now().plus(Duration.ofSeconds(5));

@@ -14,10 +14,8 @@ public CompletableFuture<TransactionResult> processTransaction(TransactionReques
             // xxx más validaciones paralelas
 
             return CompletableFuture.allOf(balanceValidation, pinValidation, xxx)
-                .thenCompose(_ -> {
-                    return CompletableFuture.supplyAsync(() ->
-                        balanceService.debit(request.cardNumber(), request.amount()));
-                });
+                .thenCompose(_ -> CompletableFuture.supplyAsync(() ->
+                        balanceService.debit(request.cardNumber(), request.amount())));
         });
 }
 \end{minted}
