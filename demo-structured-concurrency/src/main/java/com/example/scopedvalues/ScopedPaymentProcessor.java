@@ -10,8 +10,8 @@ import java.util.concurrent.StructuredTaskScope;
 
 public class ScopedPaymentProcessor {
 
-    // Define scoped values for request context
-    public static final ScopedValue<RequestContext> REQUEST_CONTEXT = ScopedValue.newInstance();
+    // Define scoped value for the transaction request
+    public static final ScopedValue<TransactionRequest> TRANSACTION_REQUEST = ScopedValue.newInstance();
 
     private final ScopedBalanceService balanceService;
     private final ScopedCardValidationService cardValidationService;
@@ -25,16 +25,16 @@ public class ScopedPaymentProcessor {
         this.pinValidationService = new ScopedPinValidationService();
     }
 
-    public TransactionResult processTransaction(TransactionRequest request, RequestContext context) throws Exception {
+    public TransactionResult processTransaction(TransactionRequest request) throws Exception {
         long startTime = System.currentTimeMillis();
 
         System.out.println("🔗 Starting SCOPED VALUES transaction processing for customer " + request.customerId());
 
         // Run the entire transaction within the scoped value context
-        return ScopedValue.where(REQUEST_CONTEXT, context).call(() -> {
+        return ScopedValue.where(TRANSACTION_REQUEST, request).call(() -> {
             try {
                 // Step 1: Validate card first (sequential)
-                ValidationResult cardResult = cardValidationService.validate(request.cardNumber());
+                ValidationResult cardResult = cardValidationService.validate();
                 if (!cardResult.success()) {
                     long processingTime = System.currentTimeMillis() - startTime;
                     auditLog("Transaction failed: " + cardResult.message());
@@ -48,9 +48,9 @@ public class ScopedPaymentProcessor {
                 // Step 2: Parallel validations with scoped context
                 try (var scope = StructuredTaskScope.open(StructuredTaskScope.Joiner.awaitAll())) {
                     // Fork parallel validation tasks - they automatically inherit the scoped context
-                    var balanceTask = scope.fork(() -> balanceService.validate(request.cardNumber(), request.amount()));
-                    var expirationTask = scope.fork(() -> expirationService.validate(request.cardNumber(), request.expirationDate()));
-                    var pinTask = scope.fork(() -> pinValidationService.validate(request.cardNumber(), request.pin()));
+                    var balanceTask = scope.fork(balanceService::validate);
+                    var expirationTask = scope.fork(expirationService::validate);
+                    var pinTask = scope.fork(pinValidationService::validate);
 
                     // Wait for all parallel tasks to complete
                     scope.join();
@@ -81,7 +81,7 @@ public class ScopedPaymentProcessor {
                     System.out.println("✅ All validations passed, proceeding with debit...");
 
                     // Step 3: Debit the amount
-                    ValidationResult debitResult = balanceService.debit(request.cardNumber(), request.amount());
+                    ValidationResult debitResult = balanceService.debit();
                     if (!debitResult.success()) {
                         long processingTime = System.currentTimeMillis() - startTime;
                         auditLog("Transaction failed: " + debitResult.message());
@@ -110,7 +110,7 @@ public class ScopedPaymentProcessor {
     }
 
     private void auditLog(String message) {
-        RequestContext context = REQUEST_CONTEXT.get();
-        System.out.println("📝 AUDIT [" + context.correlationId() + "] " + message);
+        TransactionRequest req = TRANSACTION_REQUEST.get();
+        System.out.println("📝 AUDIT [Customer: " + req.customerId() + "] " + message);
     }
 }

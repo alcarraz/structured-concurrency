@@ -1,11 +1,15 @@
 package com.example.scopedvalues;
 
+import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
 
 public class ScopedCardValidationService {
 
-    public ValidationResult validate(String cardNumber) {
+    public ValidationResult validate() {
+        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
+        String cardNumber = request.cardNumber();
+
         auditLog("Starting card validation for: " + cardNumber);
 
         DemoUtil.simulateNetworkDelay(300);
@@ -22,8 +26,8 @@ public class ScopedCardValidationService {
 
 
     private void auditLog(String message) {
-        RequestContext context = ScopedPaymentProcessor.REQUEST_CONTEXT.get();
-        System.out.println("💳 CARD [" + context.correlationId() + "] " + message);
+        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
+        System.out.println("💳 CARD [Customer: " + request.customerId() + "] " + message);
     }
 
 }

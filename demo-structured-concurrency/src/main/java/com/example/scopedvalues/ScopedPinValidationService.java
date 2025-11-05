@@ -1,5 +1,6 @@
 package com.example.scopedvalues;
 
+import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
 
@@ -13,7 +14,11 @@ public class ScopedPinValidationService {
         "4000-0000-0000-0002", "0000"
     );
 
-    public ValidationResult validate(String cardNumber, String pin) {
+    public ValidationResult validate() {
+        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
+        String cardNumber = request.cardNumber();
+        String pin = request.pin();
+
         auditLog("Starting PIN validation for card: " + cardNumber.substring(cardNumber.length() - 4));
 
         DemoUtil.simulateNetworkDelay(400);
@@ -40,8 +45,8 @@ public class ScopedPinValidationService {
     }
 
     private void auditLog(String message) {
-        RequestContext context = ScopedPaymentProcessor.REQUEST_CONTEXT.get();
-        System.out.println("🔐 PIN [" + context.correlationId() + "] " + message);
+        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
+        System.out.println("🔐 PIN [Customer: " + request.customerId() + "] " + message);
     }
 
 }

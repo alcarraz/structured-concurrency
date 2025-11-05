@@ -1,5 +1,6 @@
 package com.example.scopedvalues;
 
+import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
 
@@ -8,7 +9,11 @@ import java.time.format.DateTimeFormatter;
 
 public class ScopedExpirationService {
 
-    public ValidationResult validate(String cardNumber, String expirationDate) {
+    public ValidationResult validate() {
+        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
+        String cardNumber = request.cardNumber();
+        String expirationDate = request.expirationDate();
+
         auditLog("Starting expiration validation for card: " + cardNumber.substring(cardNumber.length() - 4));
 
         DemoUtil.simulateNetworkDelay(200);
@@ -38,8 +43,8 @@ public class ScopedExpirationService {
     }
 
     private void auditLog(String message) {
-        RequestContext context = ScopedPaymentProcessor.REQUEST_CONTEXT.get();
-        System.out.println("📅 EXPIRATION [" + context.correlationId() + "] " + message);
+        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
+        System.out.println("📅 EXPIRATION [Customer: " + request.customerId() + "] " + message);
     }
 
 }
