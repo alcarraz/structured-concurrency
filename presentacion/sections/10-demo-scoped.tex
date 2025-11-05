@@ -1,0 +1,32 @@
+\section{Demo: Scoped Values}
+
+\begin{frame}
+\frametitle{Demo: Scoped Values en Acción}
+\begin{center}
+\Large{Context Propagation Automático}
+\end{center}
+
+\vspace{1em}
+\begin{block}{Demo Block 2: Scoped Values}
+\begin{itemize}
+\item \texttt{./gradlew demoScopedValues} - Context propagation sin parameter drilling
+\end{itemize}
+\end{block}
+
+\vspace{1em}
+\begin{exampleblock}{¿Qué veremos?}
+\begin{itemize}
+\item Definición de \texttt{ScopedValue<TransactionRequest>}
+\item Propagación automática a través de \texttt{scope.fork()}
+\item Acceso directo con \texttt{TRANSACTION\_REQUEST.get()}
+\item Audit logs con customer ID del request
+\item Integración perfecta con Structured Concurrency
+\end{itemize}
+\end{exampleblock}
+
+\vspace{0.5em}
+\begin{alertblock}{Sin Scoped Values}
+\textbf{Necesitarías:} Pasar datos del \texttt{TransactionRequest} como parámetros a cada método, o usar ThreadLocal (problemático con Virtual Threads).
+\end{alertblock}
+\end{frame}
+

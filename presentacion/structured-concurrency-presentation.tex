@@ -1,0 +1,85 @@
+%! suppress = DiscouragedUseOfDef
+\documentclass{presentacion}
+
+\usepackage[utf8]{inputenc}
+
+\hypersetup{pdfpagemode=FullScreen}
+
+\usepackage[spanish]{babel}
+\usepackage{listings}
+\usepackage[T1]{fontenc}
+
+\usepackage[backend=bibtex,style=alphabetic]{biblatex}
+\bibliography{referencias}
+\bibliographystyle{}
+
+\usepackage[newfloat=true]{minted} % syntax highlighting
+\usemintedstyle{rainbow_dash}
+
+\usepackage{changepage} % provee adjustwidth
+
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\epstopdfsetup{update} % only regenerate pdf files when eps file is newer
+
+\usefonttheme{structurebold} % using non standard fonts for beamer
+
+\addtobeamertemplate{frametitle}{
+    \let\insertframetitle\insertsectionhead}{}
+\addtobeamertemplate{frametitle}{
+    \let\insertframesubtitle\insertsubsectionhead}{}
+
+%! suppress = Makeatletter
+\makeatletter
+\CheckCommand*\beamer@checkframetitle{\@ifnextchar\bgroup\beamer@inlineframetitle{}}
+\renewcommand*\beamer@checkframetitle{\global\let\beamer@frametitle\relax\@ifnextchar\bgroup\beamer@inlineframetitle{}}
+%! suppress = Makeatletter
+\makeatother
+
+\AtBeginSection[]
+{
+    \begin{frame}
+        \frametitle{Índice}
+        \tableofcontents[currentsection]
+    \end{frame}
+}
+
+\usepackage{tikz}
+
+% configuración de tema
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+
+\title{Structured Concurrency en Java 25}
+\subtitle{De vuelta a la simplicidad sin sacrificar performance}
+\author{Andrés Alcarraz}
+\institute{Peru JUG - Meet Virtual}
+\date{\today}
+\usebackgroundtemplate%
+{
+    \tikz[overlay,remember picture]
+    \node[opacity=0.2, at=(current page.south east),anchor=south east,inner sep=.3em] {
+        \includegraphics[width=10em]{img/qr-code}
+        \vspace{10em}
+    };
+}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\input{sections/01-about-me} 
+\input{sections/02-introduction}
+\input{sections/03-virtual-threads}
+\input{sections/04-problem}
+\input{sections/05-solution}
+\input{sections/06-demo-structured}
+\input{sections/07-advanced-features}
+\input{sections/08-performance}
+\input{sections/09-scoped-values}
+\input{sections/10-demo-scoped}
+\input{sections/11-conclusions}
+\input{sections/12-questions}
+\input{sections/13-references}
+
+\end{document}

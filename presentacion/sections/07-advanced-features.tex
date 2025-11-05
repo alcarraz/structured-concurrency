@@ -1,0 +1,141 @@
+\section{Features Avanzados}
+
+\begin{frame}[fragile]
+\frametitle{Custom Joiners: Estrategias de Coordinación}
+
+\begin{block}{Joiners Incluidos en Java 25}
+\begin{itemize}
+\item \texttt{allSuccessfulOrThrow()} - Fail-fast (por defecto con \texttt{open()})
+\item \texttt{awaitAll()} - Espera todas las tareas
+\item \texttt{anySuccessfulResultOrThrow()} - Primera tarea exitosa
+\item \texttt{allUntil(Instant)} - Todas las tareas hasta deadline
+\end{itemize}
+\end{block}
+
+\vspace{0.5em}
+\begin{minted}[fontsize=\footnotesize]{java}
+// Custom Joiner: Recoger solo N primeros resultados
+try (var scope = StructuredTaskScope.open(
+        Joiner.first(3))) {  // Espera primeros 3
+
+    for (int i = 0; i < 10; i++) {
+        scope.fork(() -> fetchData(i));
+    }
+
+    scope.join();  // Retorna cuando hay 3 exitosos
+    List<Result> first3 = scope.results();
+}
+\end{minted}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Nested Scopes: Composición Jerárquica}
+
+\begin{minted}[fontsize=\footnotesize]{java}
+try (var outerScope = StructuredTaskScope.open()) {
+    var userData = outerScope.fork(() -> {
+        // Inner scope para validaciones paralelas del usuario
+        try (var userScope = StructuredTaskScope.open()) {
+            var profile = userScope.fork(() -> fetchProfile(userId));
+            var preferences = userScope.fork(() -> fetchPreferences(userId));
+
+            userScope.join();
+            return new UserData(profile.get(), preferences.get());
+        }
+    });
+    var orderData = outerScope.fork(() -> fetchOrders(userId));
+    outerScope.join();
+    return combine(userData.get(), orderData.get());
+}
+\end{minted}
+
+\vspace{0.5em}
+\begin{alertblock}{Ventaja}
+Cancela automáticamente TODOS los scopes anidados si falla el padre
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Timeout Patterns: Deadlines con Structured Concurrency}
+
+\begin{minted}[fontsize=\footnotesize]{java}
+// Timeout con Instant deadline
+Instant deadline = Instant.now().plus(Duration.ofSeconds(5));
+
+try (var scope = StructuredTaskScope.open(
+        Joiner.allUntil(deadline))) {
+
+    var result1 = scope.fork(() -> slowOperation1());
+    var result2 = scope.fork(() -> slowOperation2());
+    var result3 = scope.fork(() -> slowOperation3());
+
+    scope.join();  // Cancela todos si pasa el deadline
+
+    return combineResults(
+        result1.get(), result2.get(), result3.get());
+
+} catch (TimeoutException e) {
+    return TransactionResult.failure(
+        "Timeout: operations took longer than 5 seconds");
+}
+\end{minted}
+\end{frame}
+
+\begin{frame}[plain]
+\frametitle{Anti-Patterns: Lo Que NO Debes Hacer}
+\small
+
+\begin{alertblock}{$\times$ Anti-Pattern 1: Leaking Tasks}
+\begin{itemize}
+\item \textbf{NO hagas:} Fork tasks sin esperar \texttt{join()}
+\item \textbf{Problema:} Tasks huérfanas, resource leaks
+\item \textbf{Solución:} Siempre usa try-with-resources
+\end{itemize}
+\end{alertblock}
+
+\begin{alertblock}{$\times$ Anti-Pattern 2: Thread Pools con Virtual Threads}
+\begin{itemize}
+\item \textbf{NO hagas:} \texttt{Executors.newFixedThreadPool(...)} para VTs
+\item \textbf{Problema:} Overhead innecesario, los VTs no necesitan pooling
+\item \textbf{Solución:} Crea VTs directamente con \texttt{Thread.ofVirtual()}
+\end{itemize}
+\end{alertblock}
+
+\begin{alertblock}{$\times$ Anti-Pattern 3: Ignorar InterruptedException}
+\begin{itemize}
+\item \textbf{NO hagas:} Catch vacío o sin lógica de cancelación
+\item \textbf{Problema:} VTs dependen de interrupciones para cancelación
+\item \textbf{Solución:} Maneja interrupciones en tareas forked
+\end{itemize}
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[plain]
+\frametitle{Best Practices: Patrones Recomendados}
+\small
+
+\begin{exampleblock}{$\checkmark$ 1. Try-With-Resources Siempre}
+\begin{itemize}
+\item Usa \texttt{try (var scope = ...)} para garantizar cleanup
+\item El scope cancela tasks pendientes automáticamente
+\item Evita leaks y garantiza resource management correcto
+\end{itemize}
+\end{exampleblock}
+
+\begin{exampleblock}{$\checkmark$ 2. Manejo de Excepciones en Tareas}
+\begin{itemize}
+\item Captura y maneja excepciones dentro de cada tarea forked
+\item Usa joiner apropiado: fail-fast para críticos, awaitAll para recolección
+\item Propaga contexto de error de forma clara
+\end{itemize}
+\end{exampleblock}
+
+\begin{exampleblock}{$\checkmark$ 3. Scoped Values para Contexto}
+\begin{itemize}
+\item Usa \texttt{ScopedValue} en lugar de ThreadLocal
+\item Inmutable, thread-safe, heredado por tareas forked
+\item Más eficiente con millones de virtual threads
+\end{itemize}
+\end{exampleblock}
+\end{frame}
+

@@ -1,0 +1,73 @@
+\section{La Solución: Structured Concurrency}
+
+\begin{frame}[fragile,plain]
+\begin{minted}[fontsize=\footnotesize]{java}
+// STRUCTURED: Código que se lee como se ejecuta
+public TransactionResult processTransaction(TransactionRequest request) throws InterruptedException {
+    ValidationResult cardResult = cardValidationService.validate(request.cardNumber());
+    if (!cardResult.success()) return TransactionResult.failure(cardResult.message());
+
+    try (var scope = StructuredTaskScope.open(StructuredTaskScope.Joiner.awaitAll())) {
+        var balanceTask = scope.fork(() ->
+            balanceService.validate(request.cardNumber(), request.amount()));
+        // ... más validaciones paralelas
+
+        scope.join();
+
+        List<ValidationResult> results = List.of(balanceTask.get(), pinTask.get(), xxx);
+        Optional<ValidationResult> failure = results.stream().filter(r -> !r.success()).findFirst();
+        if (failure.isPresent())
+            return TransactionResult.failure(failure.get().message());
+    }
+    ValidationResult debitResult = balanceService.debit(request.cardNumber(), request.amount());
+    return debitResult.success() ? TransactionResult.success(xxx) : TransactionResult.failure(xxx);
+}
+\end{minted}
+\end{frame}
+
+\begin{frame}
+\frametitle{Ventajas de Structured Concurrency}
+\begin{exampleblock}{Simplicidad y Poder}
+\begin{itemize}
+\item \textbf{Código Legible:} Lee como se ejecuta
+\item \textbf{Error Handling Simple:} Excepciones tradicionales
+\item \textbf{Resource Management:} Try-with-resources automático
+\item \textbf{Debugging Claro:} Stack traces normales
+\item \textbf{Performance Igual:} Misma ejecución paralela
+\end{itemize}
+\end{exampleblock}
+
+\vspace{1em}
+\begin{block}{Principios Clave}
+\begin{itemize}
+\item \textbf{Structured Lifecycle:} Tareas anidadas mueren con el scope
+\item \textbf{Fail-Fast por Defecto:} \texttt{open()} cancela automáticamente en fallo
+\item \textbf{Collect-All Opcional:} \texttt{open(awaitAll())} para recopilar todos los resultados
+\item \textbf{Observability:} Mejor monitoring y debugging
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}[fragile,plain]
+\begin{minted}[fontsize=\footnotesize]{java}
+// FAIL-FAST: Cancela automáticamente al primer fallo
+try (var scope = StructuredTaskScope.open()) {
+    var balanceTask = scope.fork(() -> {
+        ValidationResult result = balanceService.validate(request.cardNumber(), request.amount());
+        if (!result.success())
+            throw new RuntimeException(result.message());
+        return result;
+    });
+    // ... más validaciones
+
+    scope.join();  // Cancela tareas restantes al primer fallo
+
+    ValidationResult debitResult = balanceService.debit(request.cardNumber(), request.amount());
+    return TransactionResult.success(xxx);
+
+} catch (StructuredTaskScope.FailedException e) {
+    return TransactionResult.failure("FAIL-FAST: " + e.getMessage());
+}
+\end{minted}
+\end{frame}
+

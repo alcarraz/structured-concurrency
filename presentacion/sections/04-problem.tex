@@ -1,0 +1,48 @@
+\section{El Problema: Reactive Programming}\label{sec:el-problema:-reactive-programming}
+
+\begin{frame}[fragile,plain]
+\begin{minted}[fontsize=\footnotesize]{java}
+public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
+    return CompletableFuture
+        .supplyAsync(() -> cardValidationService.validate(request.cardNumber()))
+        .thenCompose(cardResult -> {
+            if (!cardResult.success())
+                return CompletableFuture.completedFuture(TransactionResult.failure(xxx));
+
+            var balanceValidation = CompletableFuture.supplyAsync(() ->
+                balanceService.validate(request.cardNumber(), request.amount()));
+            // xxx más validaciones paralelas
+
+            return CompletableFuture.allOf(balanceValidation, pinValidation, xxx)
+                .thenCompose(_ -> {
+                    return CompletableFuture.supplyAsync(() ->
+                        balanceService.debit(request.cardNumber(), request.amount()));
+                });
+        });
+}
+\end{minted}
+\end{frame}
+
+\begin{frame}
+\frametitle{Problemas del Approach Reactivo}
+\begin{alertblock}{Complejidad Innecesaria}
+\begin{itemize}
+\item \textbf{Callback Hell:} Lógica anidada difícil de seguir
+\item \textbf{Manejo de Errores:} Excepciones complejas con \texttt{CompletionException}
+\item \textbf{Resource Management:} Difícil garantizar cleanup
+\item \textbf{Debugging:} Stack traces confusos
+\item \textbf{Cognitive Load:} Alto costo mental para leer/mantener
+\end{itemize}
+\end{alertblock}
+
+\vspace{1em}
+\begin{exampleblock}{Resultado}
+\begin{itemize}
+\item Performance: Ejecución paralela
+\item Legibilidad: Código complejo
+\item Mantenibilidad: Difícil de modificar
+\item Testing: Complicado de probar
+\end{itemize}
+\end{exampleblock}
+\end{frame}
+
