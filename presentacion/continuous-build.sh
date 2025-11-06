@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "first build"
+make quick
 echo "Watching for .tex file changes..."
 echo "Press Ctrl+C to stop"
 
