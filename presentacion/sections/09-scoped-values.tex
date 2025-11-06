@@ -2,7 +2,6 @@
 
 \begin{frame}[fragile,plain]
 \begin{minted}[fontsize=\scriptsize]{java}
-@SuppressWarnings("ALL")
 public class ScopedPaymentProcessor {
     public static final ScopedValue<TransactionRequest> TRANSACTION_REQUEST = ScopedValue.newInstance();
     public TransactionResult processTransaction(TransactionRequest request) {
@@ -27,16 +26,13 @@ public class ScopedPaymentProcessor {
 \end{frame}
 
 \begin{frame}[fragile,plain]
-\begin{minted}[fontsize=\footnotesize]{java}
-// Acceso automático al request - sin parameter drilling
+\begin{minted}[fontsize=\tiny]{java}
 public class ScopedBalanceService {
     public ValidationResult validate() {
         TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();  // ¡Sin parámetros!
         String cardNumber = request.cardNumber();
         auditLog("Starting balance validation for card: " + cardNumber.substring(cardNumber.length() - 4));
-
         DemoUtil.simulateNetworkDelay(500);
-
         if (request.amount().doubleValue() > 1000) {
             auditLog("Balance validation failed: Insufficient funds");
             return ValidationResult.failure("Balance Check: Insufficient funds");
@@ -53,18 +49,32 @@ public class ScopedBalanceService {
         DemoUtil.simulateNetworkDelay(300);
         return ValidationResult.success("Balance Debit: Amount successfully debited");
     }
-
-    private void auditLog(String message) {
-        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();  // Automático!
-        System.out.println("BALANCE [Customer: " + request.customerId() + "] " + message);
-    }
 }
 \end{minted}
 
-\vspace{1em}
 \begin{alertblock}{$\blacktriangleright$ ¡Scoped Values son ESTABLES en Java 25!}
 \textbf{Adopten HOY en producción.} No más ThreadLocal ni parameter drilling.
 \textcolor{green}{\textbf{JEP 506 - FINAL}} - Context propagation thread-safe automático.
 \end{alertblock}
 \end{frame}
 
+\begin{frame}
+    \frametitle{Demo: Scoped Values en Acción}
+    \begin{center}
+        \Large{Context Propagation Automático}
+    \end{center}
+
+    \begin{exampleblock}{¿Qué veremos?}
+        \begin{itemize}
+            \item Definición de \texttt{ScopedValue<TransactionRequest>}
+            \item Propagación automática a través de \texttt{scope.fork()}
+            \item Acceso directo con \texttt{TRANSACTION\_REQUEST.get()}
+            \item Audit logs con los datos del request
+            \item Integración perfecta con Structured Concurrency
+        \end{itemize}
+    \end{exampleblock}
+
+    \begin{alertblock}{Sin Scoped Values}
+        \textbf{Necesitarías:} Pasar datos del \texttt{TransactionRequest} como parámetros a cada método, o usar ThreadLocal (problemático con Virtual Threads).
+    \end{alertblock}
+\end{frame}
