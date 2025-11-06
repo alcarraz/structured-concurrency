@@ -10,10 +10,11 @@
 \usepackage[T1]{fontenc}
 
 \usepackage[backend=bibtex,style=alphabetic]{biblatex}
+%! suppress = MissingBibliographystyle
 \bibliography{referencias}
-\bibliographystyle{}
 
 \usepackage[newfloat=true]{minted} % syntax highlighting
+%! suppress = EscapeUnderscore
 \usemintedstyle{rainbow_dash}
 
 \usepackage{changepage} % provee adjustwidth
@@ -53,8 +54,8 @@
 \title{Structured Concurrency en Java 25}
 \subtitle{De vuelta a la simplicidad sin sacrificar performance}
 \author{Andrés Alcarraz}
-\institute{Peru JUG - Meet Virtual}
-\date{\today}
+\institute{Peru JUG - JConf Perú 2025}
+\date{3 de diciembre de 2025}
 \usebackgroundtemplate%
 {
     \tikz[overlay,remember picture]
@@ -77,7 +78,6 @@
 \input{sections/07-advanced-features}
 \input{sections/08-performance}
 \input{sections/09-scoped-values}
-\input{sections/10-demo-scoped}
 \input{sections/11-conclusions}
 \input{sections/12-questions}
 \input{sections/13-references}
