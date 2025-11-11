@@ -1,6 +1,7 @@
-\section{El Problema: Reactive Programming}\label{sec:el-problema:-reactive-programming}
+\section{Implementación reactiva}\label{sec:el-problema:-reactive-programming}
 
-\begin{frame}[fragile,plain]
+\subsection{Código de ejemplo}
+\begin{frame}[fragile]
 \begin{minted}[fontsize=\footnotesize]{java}
 public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
     return CompletableFuture
@@ -11,7 +12,7 @@ public CompletableFuture<TransactionResult> processTransaction(TransactionReques
 
             var balanceValidation = CompletableFuture.supplyAsync(() ->
                 balanceService.validate(request.cardNumber(), request.amount()));
-            // xxx más validaciones paralelas
+            // ... más validaciones paralelas
 
             return CompletableFuture.allOf(balanceValidation, pinValidation, xxx)
                 .thenCompose(_ -> CompletableFuture.supplyAsync(() ->
@@ -21,8 +22,8 @@ public CompletableFuture<TransactionResult> processTransaction(TransactionReques
 \end{minted}
 \end{frame}
 
+\subs{Problemas del Enfoque Reactivo}
 \begin{frame}
-\frametitle{Problemas del Approach Reactivo}
 \begin{alertblock}{Complejidad Innecesaria}
 \begin{itemize}
 \item \textbf{Callback Hell:} Lógica anidada difícil de seguir
@@ -33,7 +34,6 @@ public CompletableFuture<TransactionResult> processTransaction(TransactionReques
 \end{itemize}
 \end{alertblock}
 
-\vspace{1em}
 \begin{exampleblock}{Resultado}
 \begin{itemize}
 \item Performance: Ejecución paralela

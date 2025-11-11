@@ -1,14 +1,13 @@
 \section{Virtual Threads: La Base}
 
+\subsection{Virtual Threads: M:N Mapping}
 \begin{frame}
-\frametitle{Virtual Threads: M:N Mapping}
 
 \begin{columns}
 \column{0.48\textwidth}
 \begin{center}
 \textbf{\small Platform Threads (1:1)}
 
-\vspace{0.5em}
 \begin{tikzpicture}[scale=0.9]
     % Platform threads on the left
     \node[draw, fill=orange!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (p1) at (-1.2,1.8) {PT 1};
@@ -33,7 +32,6 @@
 \begin{center}
 \textbf{\small Virtual Threads (M:N)}
 
-\vspace{0.5em}
 \begin{tikzpicture}[scale=0.9]
     % Virtual threads layer
     \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (-1.2,2.2) {VT1};
@@ -64,7 +62,6 @@
 \end{center}
 \end{columns}
 
-\vspace{0.5em}
 \begin{block}{Ventajas Clave}
 \begin{itemize}
 \item Millones de Virtual Threads con pocos OS Threads
@@ -74,10 +71,12 @@
 \end{block}
 \end{frame}
 
-\begin{frame}
-\frametitle{Virtual Threads: La Base de Structured Concurrency}
+\subsection{Virtual Threads: La Base de Structured Concurrency}
+\begin{frame}[plain]
+\small
 
-\begin{exampleblock}{¿Por qué Virtual Threads habilitan Structured Concurrency?}
+\begin{exampleblock}{¿Por qué los Virtual Threads habilitan Structured Concurrency?}
+\small
 \begin{itemize}
 \item \textbf{Bajo Costo:} Crear miles de tareas ya no es problema
 \item \textbf{Blocking is OK:} Puedes escribir código bloqueante simple
@@ -86,8 +85,8 @@
 \end{itemize}
 \end{exampleblock}
 
-\vspace{1em}
 \begin{block}{Comparación de Costos}
+\small
 \begin{center}
 \begin{tabular}{|l|c|c|}
 \hline
@@ -102,19 +101,17 @@ Máximo práctico & ~miles & ~millones \\
 \end{center}
 \end{block}
 
-\vspace{0.5em}
 \begin{alertblock}{Resultado}
+\small
 Virtual Threads hacen viable el modelo fork/join masivo de Structured Concurrency
 \end{alertblock}
 \end{frame}
 
+\subsection{El Problema: Procesamiento de Transacción Financiera}
 \begin{frame}
-\frametitle{El Problema: Procesamiento de Transacción Financiera}
 \begin{center}
 \Large{Flujo ficticio de Validación y Débito de una transacción financiera}
-\end{center}
 
-\vspace{1em}
 \begin{tikzpicture}[
     node/.style={draw, rectangle, text width=1.5cm, align=center, font=\tiny, minimum height=0.8cm},
     parallel/.style={draw, rectangle, text width=2.8cm, align=center, font=\tiny, fill=blue!10, minimum height=0.8cm},
@@ -158,8 +155,8 @@ Virtual Threads hacen viable el modelo fork/join masivo de Structured Concurrenc
 \node [above of=debit, yshift=0.3cm, font=\tiny]{\textbf{Paso 3}};
 
 \end{tikzpicture}
+\end{center}
 
-\vspace{0.5em}
 \begin{alertblock}{Flujo Optimizado}
 \textbf{1.} Validar tarjeta primero (paso previo para obtener el resto de la información)\\
 \textbf{2.} Validaciones paralelas si tarjeta OK\\

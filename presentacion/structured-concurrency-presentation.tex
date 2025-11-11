@@ -25,18 +25,6 @@
 
 \usefonttheme{structurebold} % using non standard fonts for beamer
 
-\addtobeamertemplate{frametitle}{
-    \let\insertframetitle\insertsectionhead}{}
-\addtobeamertemplate{frametitle}{
-    \let\insertframesubtitle\insertsubsectionhead}{}
-
-%! suppress = Makeatletter
-\makeatletter
-\CheckCommand*\beamer@checkframetitle{\@ifnextchar\bgroup\beamer@inlineframetitle{}}
-\renewcommand*\beamer@checkframetitle{\global\let\beamer@frametitle\relax\@ifnextchar\bgroup\beamer@inlineframetitle{}}
-%! suppress = Makeatletter
-\makeatother
-
 \AtBeginSection[]
 {
     \begin{frame}
@@ -74,7 +62,6 @@
 \input{sections/03-virtual-threads}
 \input{sections/04-problem}
 \input{sections/05-solution}
-\input{sections/06-demo-structured}
 \input{sections/07-advanced-features}
 \input{sections/08-performance}
 \input{sections/09-scoped-values}

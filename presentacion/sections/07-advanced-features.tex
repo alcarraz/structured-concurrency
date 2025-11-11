@@ -1,7 +1,7 @@
 \section{Features Avanzados}\label{sec:features-avanzados}
 
+\subsection{Custom Joiners: Estrategias de Coordinación}
 \begin{frame}[fragile]
-\frametitle{Custom Joiners: Estrategias de Coordinación}
 
 \begin{block}{Joiners Incluidos en Java 25}
 \begin{itemize}
@@ -12,7 +12,6 @@
 \end{itemize}
 \end{block}
 
-\vspace{0.5em}
 %! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
 // Custom Joiner: Recoger solo N primeros resultados
@@ -29,8 +28,8 @@ try (var scope = StructuredTaskScope.open(
 \end{minted}
 \end{frame}
 
+\subsection{Nested Scopes: Composición Jerárquica}
 \begin{frame}[fragile]
-\frametitle{Nested Scopes: Composición Jerárquica}
 
 %! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
@@ -51,14 +50,13 @@ try (var outerScope = StructuredTaskScope.open()) {
 }
 \end{minted}
 
-\vspace{0.5em}
 \begin{alertblock}{Ventaja}
 Cancela automáticamente TODOS los scopes anidados si falla el padre
 \end{alertblock}
 \end{frame}
 
+\subsection{Timeout Patterns: Deadlines con Structured Concurrency}
 \begin{frame}[fragile]
-\frametitle{Timeout Patterns: Deadlines con Structured Concurrency}
 
 %! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
@@ -84,11 +82,12 @@ try (var scope = StructuredTaskScope.open(
 \end{minted}
 \end{frame}
 
-\begin{frame}[plain]
-\frametitle{Anti-Patterns: Lo Que NO Debes Hacer}
-\small
+\subsection{Anti-Patterns: Lo Que NO Debes Hacer}
+\begin{frame}
+\footnotesize
 
 \begin{alertblock}{$\times$ Anti-Pattern 1: Leaking Tasks}
+\footnotesize
 \begin{itemize}
 \item \textbf{NO hagas:} Fork tasks sin esperar \texttt{join()}
 \item \textbf{Problema:} Tasks huérfanas, resource leaks
@@ -97,6 +96,7 @@ try (var scope = StructuredTaskScope.open(
 \end{alertblock}
 
 \begin{alertblock}{$\times$ Anti-Pattern 2: Thread Pools con Virtual Threads}
+\footnotesize
 \begin{itemize}
 \item \textbf{NO hagas:} \texttt{Executors.newFixedThreadPool(...)} para VTs
 \item \textbf{Problema:} Overhead innecesario, los VTs no necesitan pooling
@@ -105,6 +105,7 @@ try (var scope = StructuredTaskScope.open(
 \end{alertblock}
 
 \begin{alertblock}{$\times$ Anti-Pattern 3: Ignorar InterruptedException}
+\footnotesize
 \begin{itemize}
 \item \textbf{NO hagas:} Catch vacío o sin lógica de cancelación
 \item \textbf{Problema:} VTs dependen de interrupciones para cancelación
@@ -113,11 +114,12 @@ try (var scope = StructuredTaskScope.open(
 \end{alertblock}
 \end{frame}
 
-\begin{frame}[plain]
-\frametitle{Best Practices: Patrones Recomendados}
+\subsection{Best Practices: Patrones Recomendados}
+\begin{frame}
 \small
 
-\begin{exampleblock}{$\checkmark$ 1. Try-With-Resources Siempre}
+\begin{exampleblock}{$\checkmark$ 1. Try-With-Resources Siempre} 
+    \footnotesize
 \begin{itemize}
 \item Usa \texttt{try (var scope = ...)} para garantizar cleanup
 \item El scope cancela tasks pendientes automáticamente
@@ -126,6 +128,7 @@ try (var scope = StructuredTaskScope.open(
 \end{exampleblock}
 
 \begin{exampleblock}{$\checkmark$ 2. Manejo de Excepciones en Tareas}
+    \footnotesize
 \begin{itemize}
 \item Captura y maneja excepciones dentro de cada tarea forked
 \item Usa joiner apropiado: fail-fast para críticos, awaitAll para recolección
@@ -134,6 +137,7 @@ try (var scope = StructuredTaskScope.open(
 \end{exampleblock}
 
 \begin{exampleblock}{$\checkmark$ 3. Scoped Values para Contexto}
+    \footnotesize
 \begin{itemize}
 \item Usa \texttt{ScopedValue} en lugar de ThreadLocal
 \item Inmutable, thread-safe, heredado por tareas forked

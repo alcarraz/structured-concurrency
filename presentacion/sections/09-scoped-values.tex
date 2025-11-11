@@ -1,6 +1,6 @@
 \section{Scoped Values}
 
-\begin{frame}[fragile,plain]
+\begin{frame}[fragile]
 \begin{minted}[fontsize=\scriptsize]{java}
 public class ScopedPaymentProcessor {
     public static final ScopedValue<TransactionRequest> TRANSACTION_REQUEST = ScopedValue.newInstance();
@@ -58,8 +58,8 @@ public class ScopedBalanceService {
 \end{alertblock}
 \end{frame}
 
+\subsection{Demo: Scoped Values en Acción}
 \begin{frame}
-    \frametitle{Demo: Scoped Values en Acción}
     \begin{center}
         \Large{Context Propagation Automático}
     \end{center}

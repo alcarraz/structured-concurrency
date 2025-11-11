@@ -1,12 +1,11 @@
 \section{Comparación de Performance}
 
+\subsection{Performance: Caso Exitoso - Paridad}
 \begin{frame}
-\frametitle{Performance: Caso Exitoso - Paridad}
 \begin{center}
 \Large{Cuando todas las validaciones pasan...}
 \end{center}
 
-\vspace{1em}
 \begin{exampleblock}{Comando: ./gradlew demoCompare}
 \begin{itemize}
 \item \textbf{Reactive (CompletableFuture)}: ~520ms
@@ -15,7 +14,7 @@
 \end{itemize}
 \end{exampleblock}
 
-\vspace{1em}
+
 \begin{block}{¿Por qué iguales?}
 Ambos ejecutan las 4 validaciones en paralelo y esperan que todas terminen:
 \begin{itemize}
@@ -25,8 +24,8 @@ Ambos ejecutan las 4 validaciones en paralelo y esperan que todas terminen:
 \end{block}
 \end{frame}
 
+\subsection{Performance: Caso Fallido - Ventaja Dramática}
 \begin{frame}
-\frametitle{Performance: Caso Fallido - Ventaja Dramática}
 \begin{center}
 \Large{Cuando una validación falla...}
 \end{center}
@@ -97,7 +96,7 @@ Mejor UX y menor uso de recursos en errores
 % \textbf{Para ser justos... también creamos StructuredPaymentProcessor}
 % \end{center}
 % 
-% \vspace{1em}
+% 
 % \begin{block}{StructuredTaskScope.open(awaitAll())}
 % \begin{itemize}
 % \item Usa \texttt{awaitAll()} en lugar del fail-fast por defecto
@@ -106,7 +105,7 @@ Mejor UX y menor uso de recursos en errores
 % \end{itemize}
 % \end{block}
 % 
-% \vspace{1em}
+% 
 % \begin{exampleblock}{Aún así, Structured Concurrency gana}
 % \begin{itemize}
 % \item \textbf{Código más limpio}: Sin callbacks ni exception wrapping
