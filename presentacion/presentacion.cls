@@ -7,8 +7,13 @@
 
 \RequirePackage{fontawesome}
 \RequirePackage{worldflags}
+\RequirePackage{etoolbox}
 
-
+% Reduce ToC vertical spacing to fit all sections on one slide
+\makeatletter
+\patchcmd{\beamer@sectionintoc}{\vskip1.5em}{\vskip0.4em}{}{}
+\patchcmd{\beamer@sectionintoc}{\vfill}{\vskip0.15em}{}{}
+\makeatother
 
 % Define default accent colors
 \definecolor{basecolor}{HTML}{0000F0}       %BLUE
@@ -103,30 +108,3 @@
 \newcommand*{\twitter}[1]{\sociallink{\faTwitter}{https://x.com/users/#1}{\underline{X/#1}}}
 
 \flagsdefault[width=1em]
-
-% Configure headline to automatically show section name (left) and subsection (right)
-% This renders on ALL frames automatically, no need for \frametitle{}
-% ht=height above baseline, dp=depth below baseline
-% To adjust height: change ht and dp values, and update \vbox to\dimexpr<ht>+<dp>\relax
-\AtBeginDocument{
-  \setbeamertemplate{headline}{
-    \leavevmode%
-    \hbox{%
-      \begin{beamercolorbox}[wd=\paperwidth,ht=4ex,dp=1.5ex,leftskip=.3cm,rightskip=.3cm]{frametitle}
-        \vbox to\dimexpr4ex+1.5ex\relax{%
-          \vfil%
-          \ifx\insertsubsectionhead\@empty%
-            \hbox{\usebeamerfont{frametitle}\insertsectionhead}%
-          \else%
-            \hbox to\dimexpr\hsize-0.6cm\relax{%
-              \usebeamerfont{frametitle}\insertsectionhead%
-              \hfill\usebeamerfont{framesubtitle}\usebeamercolor[fg]{framesubtitle}\insertsubsectionhead%
-            }%
-          \fi%
-          \vfil%
-        }%
-      \end{beamercolorbox}%
-    }%
-    \vskip0pt%
-  }
-}
