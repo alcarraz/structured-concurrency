@@ -28,20 +28,20 @@ public TransactionResult processTransaction(TransactionRequest request) throws I
 \begin{frame}
 \begin{exampleblock}{Simplicidad y Poder}
 \begin{itemize}
-\item \textbf{Código Legible:} Se lee como se ejecuta
-\item \textbf{Error Handling Simple:} Excepciones tradicionales
-\item \textbf{Resource Management:} Try-with-resources automático
-\item \textbf{Debugging Claro:} Stack traces normales
-\item \textbf{Performance Igual:} Misma ejecución paralela
+\item \textbf{Código Legible:} Se lee como se ejecuta.
+\item \textbf{Manejo de errores simple:} Excepciones tradicionales.
+\item \textbf{Manejo de recursos:} Try-with-resources automático.
+\item \textbf{Depuración:} Stack traces normales.
+\item \textbf{Rendimiento:} Misma ejecución paralela.
 \end{itemize}
 \end{exampleblock}
 
 \begin{block}{Principios Clave}
 \begin{itemize}
-\item \textbf{Structured Lifecycle:} Tareas anidadas mueren con el scope
-\item \textbf{Fail-Fast por Defecto:} \texttt{open()} cancela automáticamente en fallo
-\item \textbf{Collect-All Opcional:} \texttt{open(awaitAll())} para recopilar todos los resultados
-\item \textbf{Observability:} Mejor monitoring y debugging
+\item \textbf{Ciclo de vida estructurado:} Tareas anidadas mueren con el alcance.
+\item \textbf{Fallar tempranamente por defecto:} \texttt{open()} cancela automáticamente si una tarea falla.
+\item \textbf{Opcionalmente, esperar por todos:} \texttt{open(awaitAll())} para recopilar todos los resultados.
+\item \textbf{Observabilidad:} Mejor monitoreo y depuración, volcado estructurado de hilos.
 \end{itemize}
 \end{block}
 \end{frame}
