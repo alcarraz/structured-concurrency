@@ -1,4 +1,4 @@
-\section{Features Avanzados}\label{sec:features-avanzados}
+\section{Caracteríssticas avanzadas}\label{sec:features-avanzados}
 
 \subsection{Custom Joiners: Estrategias de Coordinación}
 \begin{frame}[fragile]
@@ -28,7 +28,7 @@ try (var scope = StructuredTaskScope.open(
 \end{minted}
 \end{frame}
 
-\subsection{Nested Scopes: Composición Jerárquica}
+\subsection{Scopes anidados: Composición Jerárquica}
 \begin{frame}[fragile]
 
 %! language = JShellLanguage
@@ -50,9 +50,9 @@ try (var outerScope = StructuredTaskScope.open()) {
 }
 \end{minted}
 
-\begin{alertblock}{Ventaja}
+\begin{exampleblock}{Ventaja}
 Cancela automáticamente TODOS los scopes anidados si falla el padre
-\end{alertblock}
+\end{exampleblock}
 \end{frame}
 
 \subsection{Timeout Patterns: Deadlines con Structured Concurrency}

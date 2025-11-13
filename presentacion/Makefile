@@ -1,7 +1,7 @@
 # Makefile for Structured Concurrency presentation
 
 MAIN = structured-concurrency-presentation
-LATEX = pdflatex
+LATEX = lualatex
 BIBTEX = bibtex
 LATEX_FLAGS = -shell-escape -interaction=nonstopmode
 

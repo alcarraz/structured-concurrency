@@ -8,6 +8,11 @@
 \RequirePackage{fontawesome}
 \RequirePackage{worldflags}
 \RequirePackage{etoolbox}
+\RequirePackage{emoji}
+\setemojifont{TwemojiMozilla}
+
+
+
 
 % Reduce ToC vertical spacing to fit all sections on one slide
 \makeatletter

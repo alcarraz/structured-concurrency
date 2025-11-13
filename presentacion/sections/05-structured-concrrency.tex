@@ -1,5 +1,5 @@
 \section{Concurrencia Estructurada}\label{sec:la-solucion:-structured-concurrency}
-
+\subsection{Ejemplo}
 \begin{frame}[fragile]
 \begin{minted}[fontsize=\footnotesize]{java}
 // STRUCTURED: Código que se lee como se ejecuta
@@ -24,7 +24,7 @@ public TransactionResult processTransaction(TransactionRequest request) throws I
 }
 \end{minted}
 \end{frame}
-
+\subsection{Características}
 \begin{frame}
 \begin{exampleblock}{Simplicidad y Poder}
 \begin{itemize}
@@ -46,34 +46,34 @@ public TransactionResult processTransaction(TransactionRequest request) throws I
 \end{block}
 \end{frame}
 
-\begin{frame}[fragile]
-%! language = JShellLanguage
-\begin{minted}[fontsize=\footnotesize]{java}
-// FAIL-FAST: Cancela automáticamente al primer fallo
-try (var scope = StructuredTaskScope.open()) {
-    var balanceTask = scope.fork(() -> {
-        ValidationResult result = balanceService.validate(request.cardNumber(), request.amount());
-        if (!result.success())
-            throw new RuntimeException(result.message());
-        return result;
-    });
-    // ... más validaciones
-
-    scope.join();  // Cancela tareas restantes al primer fallo
-
-    ValidationResult debitResult = balanceService.debit(request.cardNumber(), request.amount());
-    return TransactionResult.success(xxx);
-
-} catch (StructuredTaskScope.FailedException e) {
-    return TransactionResult.failure("FAIL-FAST: " + e.getMessage());
-}
-\end{minted}
-\end{frame}
-
+%\begin{frame}[fragile]
+%%! language = JShellLanguage
+%\begin{minted}[fontsize=\footnotesize]{java}
+%// FAIL-FAST: Cancela automáticamente al primer fallo
+%try (var scope = StructuredTaskScope.open()) {
+%    var balanceTask = scope.fork(() -> {
+%        ValidationResult result = balanceService.validate(request.cardNumber(), request.amount());
+%        if (!result.success())
+%            throw new RuntimeException(result.message());
+%        return result;
+%    });
+%    // ... más validaciones
+%
+%    scope.join();  // Cancela tareas restantes al primer fallo
+%
+%    ValidationResult debitResult = balanceService.debit(request.cardNumber(), request.amount());
+%    return TransactionResult.success(xxx);
+%
+%} catch (StructuredTaskScope.FailedException e) {
+%    return TransactionResult.failure("FAIL-FAST: " + e.getMessage());
+%}
+%\end{minted}
+%\end{frame}
+\subsection{Demostración}
 \begin{frame}
-    \frametitle{Demo: Structured Concurrency en Acción}
+    \frametitle{Demo Time!}
     \begin{center}
-        \Large{Demos de Structured Concurrency}
+        \LARGE{Rezarle a los dioses de las demos \emoji{folded-hands}}
     \end{center}
 
     \begin{block}{Demo Block 1: Structured Concurrency}
