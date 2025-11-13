@@ -1,6 +1,5 @@
 \section{Virtual Threads}
 
-\subsection{M:N Mapping}
 \begin{frame}
 
     \begin{columns}
@@ -71,19 +70,16 @@
     \end{block}
 \end{frame}
 
-\subsection{Habilitando la concurrencia estructurada para alta concurrencia}
+\subsection{Relación con concurrencia estructurada}
 \begin{frame}
     \small
 
-    \begin{exampleblock}{¿Por qué los Virtual Threads habilitan Structured Concurrency?}
-        \small
-        \begin{itemize}
-            \item \textbf{Bajo Costo:} Crear miles de tareas ya no es problema
-            \item \textbf{Blocking is OK:} Puedes escribir código bloqueante simple
-            \item \textbf{Natural Structure:} fork/join patterns son eficientes
-            \item \textbf{No más thread pools:} Un thread por task, administración automática
-        \end{itemize}
-    \end{exampleblock}
+    \begin{itemize}
+        \item \textbf{Escalabilidad masiva:} Bajo costo (creación + memoria) permite millones de hilos, habilita el patrón fork/join
+        \item \textbf{Bloqueo simplificado:} Park/unpark automático, código bloqueante es natural
+        \item \textbf{Scheduling automático:} Los VTs se administran solos, sin configurar pools
+        \item \textbf{Modelo mental directo:} 1 tarea = 1 thread, mapeo natural
+    \end{itemize}
 
     \begin{block}{Comparación de Costos}
         \small
@@ -101,10 +97,10 @@
         \end{center}
     \end{block}
 
-    \begin{alertblock}{Resultado}
+    \begin{exampleblock}{Resultado}
         \small
-        Virtual Threads hacen viable el modelo fork/join masivo de Structured Concurrency
-    \end{alertblock}
+        Hilos virtuales + Concurrencia estructurada = código coordinado con alta paralelización simple.
+    \end{exampleblock}
 \end{frame}
 
 

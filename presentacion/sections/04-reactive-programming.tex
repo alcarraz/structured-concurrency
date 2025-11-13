@@ -28,17 +28,17 @@ public CompletableFuture<TransactionResult> processTransaction(TransactionReques
         \begin{itemize}
             \item \textbf{Callback Hell:} Lógica anidada difícil de seguir
             \item \textbf{Manejo de Errores:} Excepciones complejas con \texttt{CompletionException}
-            \item \textbf{Resource Management:} Difícil garantizar cleanup
-            \item \textbf{Debugging:} Stack traces confusos
-            \item \textbf{Cognitive Load:} Alto costo mental para leer/mantener
+            \item \textbf{Manejo de recursos:} Difícil garantizar cleanup
+            \item \textbf{Depuración:} Stack traces confusos
+            \item \textbf{Carga cognitiva:} Alto costo mental para leer/mantener
         \end{itemize}
     \end{alertblock}
 
     \begin{exampleblock}{Resultado}
         \begin{itemize}
-            \item Performance: Ejecución paralela
+            \item Eficiencia: Ejecución paralela
             \item Legibilidad: Código complejo
-            \item Mantenibilidad: Difícil de modificar
+            \item Mantenibilidad: Lógica de negocio mezclada con la lógica de control.
             \item Testing: Complicado de probar
         \end{itemize}
     \end{exampleblock}
