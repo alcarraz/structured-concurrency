@@ -1,6 +1,6 @@
-\section{La Solución: Concurrencia Estructurada}\label{sec:la-solucion:-structured-concurrency}
+\section{Concurrencia Estructurada}\label{sec:la-solucion:-structured-concurrency}
 
-\begin{frame}[fragile,plain]
+\begin{frame}[fragile]
 \begin{minted}[fontsize=\footnotesize]{java}
 // STRUCTURED: Código que se lee como se ejecuta
 public TransactionResult processTransaction(TransactionRequest request) throws InterruptedException {
@@ -25,11 +25,10 @@ public TransactionResult processTransaction(TransactionRequest request) throws I
 \end{minted}
 \end{frame}
 
-\subsection{Ventajas de Structured Concurrency}
 \begin{frame}
 \begin{exampleblock}{Simplicidad y Poder}
 \begin{itemize}
-\item \textbf{Código Legible:} Lee como se ejecuta
+\item \textbf{Código Legible:} Se lee como se ejecuta
 \item \textbf{Error Handling Simple:} Excepciones tradicionales
 \item \textbf{Resource Management:} Try-with-resources automático
 \item \textbf{Debugging Claro:} Stack traces normales
@@ -48,7 +47,6 @@ public TransactionResult processTransaction(TransactionRequest request) throws I
 \end{frame}
 
 \begin{frame}[fragile]
-    \fr
 %! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
 // FAIL-FAST: Cancela automáticamente al primer fallo

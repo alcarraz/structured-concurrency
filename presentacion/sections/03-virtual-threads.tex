@@ -1,110 +1,110 @@
-\section{Virtual Threads: La Base}
+\section{Virtual Threads}
 
-\subsection{Virtual Threads: M:N Mapping}
+\subsection{M:N Mapping}
 \begin{frame}
 
-\begin{columns}
-\column{0.48\textwidth}
-\begin{center}
-\textbf{\small Platform Threads (1:1)}
+    \begin{columns}
+        \column{0.48\textwidth}
+        \begin{center}
+            \textbf{\small Platform Threads (1:1)}
 
-\begin{tikzpicture}[scale=0.9]
-    % Platform threads on the left
-    \node[draw, fill=orange!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (p1) at (-1.2,1.8) {PT 1};
-    \node[draw, fill=orange!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (p2) at (-1.2,0.8) {PT 2};
-    \node[draw, fill=orange!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (p3) at (-1.2,-0.2) {PT 3};
+            \begin{tikzpicture}[scale=0.9]
+                % Platform threads on the left
+                \node[draw, fill=orange!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (p1) at (-1.2,1.8) {PT 1};
+                \node[draw, fill=orange!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (p2) at (-1.2,0.8) {PT 2};
+                \node[draw, fill=orange!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (p3) at (-1.2,-0.2) {PT 3};
 
-    % OS threads on the right - moved further right
-    \node[draw, fill=red!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (o1) at (1.2,1.8) {OS T1};
-    \node[draw, fill=red!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (o2) at (1.2,0.8) {OS T2};
-    \node[draw, fill=red!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (o3) at (1.2,-0.2) {OS T3};
+                % OS threads on the right - moved further right
+                \node[draw, fill=red!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (o1) at (1.2,1.8) {OS T1};
+                \node[draw, fill=red!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (o2) at (1.2,0.8) {OS T2};
+                \node[draw, fill=red!30, minimum width=1.3cm, minimum height=0.5cm, font=\small] (o3) at (1.2,-0.2) {OS T3};
 
-    % Clean 1:1 arrows - now longer
-    \draw[->, very thick, blue!70] (p1) -- (o1);
-    \draw[->, very thick, blue!70] (p2) -- (o2);
-    \draw[->, very thick, blue!70] (p3) -- (o3);
+                % Clean 1:1 arrows - now longer
+                \draw[->, very thick, blue!70] (p1) -- (o1);
+                \draw[->, very thick, blue!70] (p2) -- (o2);
+                \draw[->, very thick, blue!70] (p3) -- (o3);
 
-    \node[gray, font=\footnotesize] at (0,-1) {1:1 mapping};
-\end{tikzpicture}
-\end{center}
+                \node[gray, font=\footnotesize] at (0,-1) {1:1 mapping};
+            \end{tikzpicture}
+        \end{center}
 
-\column{0.48\textwidth}
-\begin{center}
-\textbf{\small Virtual Threads (M:N)}
+        \column{0.48\textwidth}
+        \begin{center}
+            \textbf{\small Virtual Threads (M:N)}
 
-\begin{tikzpicture}[scale=0.9]
-    % Virtual threads layer
-    \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (-1.2,2.2) {VT1};
-    \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (-0.5,2.2) {VT2};
-    \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (0.2,2.2) {VT3};
-    \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (0.9,2.2) {...};
-    \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (1.6,2.2) {VTN};
+            \begin{tikzpicture}[scale=0.9]
+                % Virtual threads layer
+                \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (-1.2,2.2) {VT1};
+                \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (-0.5,2.2) {VT2};
+                \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (0.2,2.2) {VT3};
+                \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (0.9,2.2) {...};
+                \node[draw, fill=green!30, minimum width=0.7cm, minimum height=0.5cm, font=\tiny] at (1.6,2.2) {VTN};
 
-    % Carrier threads
-    \node[draw, fill=blue!30, minimum width=1.8cm, minimum height=0.6cm, font=\small] (c1) at (-0.5,0.8) {Carrier 1};
-    \node[draw, fill=blue!30, minimum width=1.8cm, minimum height=0.6cm, font=\small] (c2) at (1.2,0.8) {Carrier 2};
+                % Carrier threads
+                \node[draw, fill=blue!30, minimum width=1.8cm, minimum height=0.6cm, font=\small] (c1) at (-0.5,0.8) {Carrier 1};
+                \node[draw, fill=blue!30, minimum width=1.8cm, minimum height=0.6cm, font=\small] (c2) at (1.2,0.8) {Carrier 2};
 
-    % OS threads
-    \node[draw, fill=red!30, minimum width=1.8cm, minimum height=0.6cm, font=\small] (os1) at (-0.5,-0.8) {OS T1};
-    \node[draw, fill=red!30, minimum width=1.8cm, minimum height=0.6cm, font=\small] (os2) at (1.2,-0.8) {OS T2};
+                % OS threads
+                \node[draw, fill=red!30, minimum width=1.8cm, minimum height=0.6cm, font=\small] (os1) at (-0.5,-0.8) {OS T1};
+                \node[draw, fill=red!30, minimum width=1.8cm, minimum height=0.6cm, font=\small] (os2) at (1.2,-0.8) {OS T2};
 
-    % Connections
-    \draw[->, thick, dashed, gray!60] (-1.2,1.9) -- (c1);
-    \draw[->, thick, dashed, gray!60] (-0.5,1.9) -- (c1);
-    \draw[->, thick, dashed, gray!60] (0.2,1.9) -- (c2);
-    \draw[->, thick, dashed, gray!60] (1.6,1.9) -- (c2);
+                % Connections
+                \draw[->, thick, dashed, gray!60] (-1.2,1.9) -- (c1);
+                \draw[->, thick, dashed, gray!60] (-0.5,1.9) -- (c1);
+                \draw[->, thick, dashed, gray!60] (0.2,1.9) -- (c2);
+                \draw[->, thick, dashed, gray!60] (1.6,1.9) -- (c2);
 
-    \draw[->, very thick] (c1) -- (os1);
-    \draw[->, very thick] (c2) -- (os2);
+                \draw[->, very thick] (c1) -- (os1);
+                \draw[->, very thick] (c2) -- (os2);
 
-    \node[gray, font=\footnotesize] at (0.35,-1.5) {M:N mapping};
-\end{tikzpicture}
-\end{center}
-\end{columns}
+                \node[gray, font=\footnotesize] at (0.35,-1.5) {M:N mapping};
+            \end{tikzpicture}
+        \end{center}
+    \end{columns}
 
-\begin{block}{Ventajas Clave}
-\begin{itemize}
-\item Millones de Virtual Threads con pocos OS Threads
-\item Muy bajo costo de creación (~1KB vs ~2MB)
-\item Scheduling inteligente (park/unpark automático)
-\end{itemize}
-\end{block}
+    \begin{block}{Ventajas Clave}
+        \begin{itemize}
+            \item Millones de Virtual Threads con pocos OS Threads
+            \item Muy bajo costo de creación (~1KB vs ~2MB)
+            \item Scheduling inteligente (park/unpark automático)
+        \end{itemize}
+    \end{block}
 \end{frame}
 
-\subsection{Virtual Threads: La Base de Structured Concurrency}
-\begin{frame}[plain]
-\small
+\subsection{Habilitando la concurrencia estructurada para alta concurrencia}
+\begin{frame}
+    \small
 
-\begin{exampleblock}{¿Por qué los Virtual Threads habilitan Structured Concurrency?}
-\small
-\begin{itemize}
-\item \textbf{Bajo Costo:} Crear miles de tareas ya no es problema
-\item \textbf{Blocking is OK:} Puedes escribir código bloqueante simple
-\item \textbf{Natural Structure:} fork/join patterns son eficientes
-\item \textbf{No más thread pools:} Un thread por task, administración automática
-\end{itemize}
-\end{exampleblock}
+    \begin{exampleblock}{¿Por qué los Virtual Threads habilitan Structured Concurrency?}
+        \small
+        \begin{itemize}
+            \item \textbf{Bajo Costo:} Crear miles de tareas ya no es problema
+            \item \textbf{Blocking is OK:} Puedes escribir código bloqueante simple
+            \item \textbf{Natural Structure:} fork/join patterns son eficientes
+            \item \textbf{No más thread pools:} Un thread por task, administración automática
+        \end{itemize}
+    \end{exampleblock}
 
-\begin{block}{Comparación de Costos}
-\small
-\begin{center}
-\begin{tabular}{|l|c|c|}
-\hline
-\textbf{Recurso} & \textbf{Platform Thread} & \textbf{Virtual Thread} \\
-\hline
-Memoria (stack) & ~2 MB & ~1 KB \\
-Tiempo creación & ~1 ms & ~1 \textmu{}s \\
-Context switch & ~10 \textmu{}s & ~1 \textmu{}s \\
-Máximo práctico & ~miles & ~millones \\
-\hline
-\end{tabular}
-\end{center}
-\end{block}
+    \begin{block}{Comparación de Costos}
+        \small
+        \begin{center}
+            \begin{tabular}{|l|c|c|}
+                \hline
+                \textbf{Recurso} & \textbf{Platform Thread} & \textbf{Virtual Thread} \\
+                \hline
+                Memoria (stack)  & ~2 MB                    & ~1 KB                   \\
+                Tiempo creación  & ~1 ms                    & ~1 \textmu{}s           \\
+                Context switch   & ~10 \textmu{}s           & ~1 \textmu{}s           \\
+                Máximo práctico  & ~miles                   & ~millones               \\
+                \hline
+            \end{tabular}
+        \end{center}
+    \end{block}
 
-\begin{alertblock}{Resultado}
-\small
-Virtual Threads hacen viable el modelo fork/join masivo de Structured Concurrency
-\end{alertblock}
+    \begin{alertblock}{Resultado}
+        \small
+        Virtual Threads hacen viable el modelo fork/join masivo de Structured Concurrency
+    \end{alertblock}
 \end{frame}
 
 
