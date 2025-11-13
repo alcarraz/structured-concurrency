@@ -52,16 +52,16 @@ public class ScopedBalanceService {
 }
 \end{minted}
 
-\begin{alertblock}{$\blacktriangleright$ ¡Scoped Values son ESTABLES en Java 25!}
-\textbf{Adopten HOY en producción.} No más ThreadLocal ni parameter drilling.
-\textcolor{green}{\textbf{JEP 506 - FINAL}} - Context propagation thread-safe automático.
-\end{alertblock}
+\begin{exampleblock}{$\blacktriangleright$ ¡Scoped Values son ESTABLES en Java 25!}
+No más ThreadLocal ni parameter drilling. 
+\textcolor{green}{\textbf{JEP 506}}: ¡Propagación automática de contexto pronta para usar en producción!
+\end{exampleblock}
 \end{frame}
 
 \begin{frame}
     \frametitle{Demo: Scoped Values en Acción}
     \begin{center}
-        \Large{Context Propagation Automático}
+        \Large{Propagación de contexto automática}
     \end{center}
 
     \begin{exampleblock}{¿Qué veremos?}
@@ -70,11 +70,12 @@ public class ScopedBalanceService {
             \item Propagación automática a través de \texttt{scope.fork()}
             \item Acceso directo con \texttt{TRANSACTION\_REQUEST.get()}
             \item Audit logs con los datos del request
-            \item Integración perfecta con Structured Concurrency
+            \item Integración perfecta con Concurrencia Estructurada.
         \end{itemize}
     \end{exampleblock}
 
     \begin{alertblock}{Sin Scoped Values}
-        \textbf{Necesitarías:} Pasar datos del \texttt{TransactionRequest} como parámetros a cada método, o usar ThreadLocal (problemático con Virtual Threads).
+        \textbf{Necesitarías:}
+        Pasar datos del \texttt{TransactionRequest} como parámetros a cada método, o usar ThreadLocal (problemático con hilos virtuales masivos).
     \end{alertblock}
 \end{frame}
