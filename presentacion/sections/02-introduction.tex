@@ -40,53 +40,68 @@
     \begin{center}
 
         \begin{tikzpicture}[
-            node/.style={draw, rectangle, text width=1.5cm, align=center, font=\tiny, minimum height=0.8cm},
-            parallel/.style={draw, rectangle, text width=2.8cm, align=center, font=\tiny, fill=blue!10, minimum height=0.8cm},
-            arrow/.style={->, thick}
+            node/.style={rectangle, rounded corners, text width=1.5cm, align=center, font=\tiny, minimum height=0.8cm, draw=none},
+            parallel/.style={rectangle, rounded corners, text width=2.8cm, align=center, font=\tiny, fill=blue!10, minimum height=0.8cm, draw=none},
+            arrow/.style={->, thick, rounded corners}
         ]
 
-% Nodes positioned manually for precise alignment
-            \node (card) [node, fill=green!20] at (0,0) {Validar \\ Tarjeta \\ (300ms)};
+% Nodes positioned horizontally (left to right)
+            \node (transaction) [node, fill=purple!20] at (0,0) {Transacción \\ (input)};
+
+% First parallel: Merchant and Consumer paths
+            \node (merchant) [node, fill=green!20] at (5,1) {Validar \\ Comercio };
+            \node (card) [node, fill=green!20] at (3,-1) {Validar \\ Tarjeta };
 
 % Parallel validations - perfectly aligned vertically
-            \node (balance) [parallel] at (4,1) {Validar Saldo (500ms)};
-            \node (pin) [parallel] at (4,0) {Validar PIN (400ms)};
-            \node (expiry) [parallel] at (4,-1) {Validar Expiración (200ms)};
+            \node (balance) [parallel] at (6.5,0) {Validar Saldo};
+            \node (pin) [parallel] at (6.5,-1) {Validar PIN};
+            \node (expiry) [parallel] at (6.5,-2) {Validar Expiración};
 
-            \node (debit) [node, fill=orange!20] at (8,0) {Debitar \\ Monto \\ (500ms)};
+            \node (transfer) [node, fill=orange!20] at (10,-0.5) {Transferir \\ Monto };
 
 % Coordination points for line division and convergence
-            \coordinate (split) at (2,0);
-            \coordinate (join) at (6,0);
+            \coordinate (split1) at (1.5,0);
+            \coordinate (split2) at (4.5,-1);
+            \coordinate (join) at (8.5,-0.5);
 
 % Arrows with structured lines
-% From card to split point
-            \draw [arrow] (card.east) -- (split);
+% From transaction to first split
+            \draw [arrow] (transaction.east) -- (split1);
 
-% From split point to parallel validations (vertical then horizontal)
-            \draw [arrow] (split) -- (2,1) -- (balance.west);
-            \draw [arrow] (split) -- (pin.west);
-            \draw [arrow] (split) -- (2,-1) -- (expiry.west);
+% From split1 to merchant and card paths
+            \draw [arrow] (split1) -- (1.5,1) -- (merchant.west);
+            \draw [arrow] (split1) -- (1.5,-1) -- (card.west);
+
+% From card to split2 for parallel validations
+            \draw [arrow] (card.east) -- (split2);
+
+% From split2 to parallel validations (vertical then horizontal)
+            \draw [arrow] (split2) -- (4.5,0) -- (balance.west);
+            \draw [arrow] (split2) -- (pin.west);
+            \draw [arrow] (split2) -- (4.5,-2) -- (expiry.west);
+
+% From merchant to join point
+            \draw [arrow] (merchant.east) -- (8.5,1) -- (join);
 
 % From parallel validations to join point (horizontal then vertical)
-            \draw [arrow] (balance.east) -- (6,1) -- (join);
-            \draw [arrow] (pin.east) -- (join);
-            \draw [arrow] (expiry.east) -- (6,-1) -- (join);
+            \draw [arrow] (balance.east) -- (8.5,0) -- (join);
+            \draw [arrow] (pin.east) -- (8.5,-1) -- (join);
+            \draw [arrow] (expiry.east) -- (8.5,-2) -- (join);
 
-% From join point to debit
-            \draw [arrow] (join) -- (debit.west);
+% From join point to transfer
+            \draw [arrow] (join) -- (transfer.west);
 
 % Labels
-            \node [above of=card, yshift=0.3cm, font=\tiny]{\textbf{Paso 1}};
-            \node [above of=pin, yshift=0.8cm, font=\tiny] {\textbf{Paso 2: En Paralelo}};
-            \node [above of=debit, yshift=0.3cm, font=\tiny]{\textbf{Paso 3}};
+            \node at (1.5,1.5) [font=\tiny]{\textbf{En Paralelo: comercio y consumidor}};
+            \node at (4.5,0.5) [font=\tiny] {\textbf{En Paralelo: propiedades de la tarjeta}};
+%            \node at (10,0.3) [font=\tiny]{\textbf{Tr}};
 
         \end{tikzpicture}
     \end{center}
 
     \begin{alertblock}{Flujo Optimizado}
-        \textbf{1.} Validar tarjeta primero (paso previo para obtener el resto de la información)\\
-        \textbf{2.} Validaciones paralelas si tarjeta OK\\
-        \textbf{3.} Debitar solo si todas las validaciones pasan
+        \textbf{1.} En paralelo: validar comercio y consumidor (tarjeta)\\
+        \textbf{2.} Validaciones paralelas de tarjeta (saldo, PIN, expiración)\\
+        \textbf{3.} Transferir sólo si todas las validaciones pasan
     \end{alertblock}
 \end{frame}
