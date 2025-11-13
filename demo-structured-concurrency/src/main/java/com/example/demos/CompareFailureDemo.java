@@ -25,7 +25,7 @@ public class CompareFailureDemo {
 
         // Use expired card request to trigger early failure
         TransactionRequest expiredCardRequest = new TransactionRequest(
-            "12345", "5555-4444-3333-2222", "2312", "9876",  // December 2023 (expired)
+                "5555-4444-3333-2222", "2312", "9876",  // December 2023 (expired)
             new BigDecimal("75.00"), "Failure Comparison Test"
         );
 

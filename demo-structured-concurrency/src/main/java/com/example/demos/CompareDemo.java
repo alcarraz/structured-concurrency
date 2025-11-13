@@ -22,7 +22,7 @@ public class CompareDemo {
         System.out.println("════════════════════════════════════════");
 
         TransactionRequest request = new TransactionRequest(
-            "12345", "4532-1234-5678-9012", "2512", "1234",  // December 2025 (valid)
+                "4532-1234-5678-9012", "2512", "1234",  // December 2025 (valid)
             new BigDecimal("100.00"), "Comparison Test"
         );
 

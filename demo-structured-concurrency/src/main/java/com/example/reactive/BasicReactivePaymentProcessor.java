@@ -29,7 +29,6 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
     @Override
     public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
         long startTime = System.currentTimeMillis();
-        System.out.println("🔄 Starting REACTIVE transaction processing for customer " + request.customerId());
 
         // Step 1: Validate card first (sequential)
         return CompletableFuture

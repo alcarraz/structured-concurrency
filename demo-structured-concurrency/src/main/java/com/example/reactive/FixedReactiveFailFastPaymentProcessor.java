@@ -41,8 +41,6 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
     public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
         long startTime = System.currentTimeMillis();
 
-        System.out.println("🔄 Starting FIXED REACTIVE FAIL-FAST transaction processing for customer " + request.customerId());
-
         // Step 1: Validate card first (sequential)
         return CompletableFuture
             .supplyAsync(() -> cardValidationService.validate(request.cardNumber()))

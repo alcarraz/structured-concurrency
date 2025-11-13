@@ -44,7 +44,7 @@ public class ReactiveDemo {
         
         // Valid transaction
         TransactionRequest validRequest = new TransactionRequest(
-            "12345", "4532-1234-5678-9012", expDate, "1234",  // December 2025 (valid)
+                "4532-1234-5678-9012", expDate, "1234",  // December 2025 (valid)
             new BigDecimal("100.00"), "Coffee Shop"
         );
 

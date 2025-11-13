@@ -51,11 +51,11 @@ public class StructuredDemo {
     private TransactionRequest createTestRequest(Type type) {
         return switch (type) {
             case NORMAL -> new TransactionRequest(
-                "12345", "4532-1234-5678-9012", "2512", "1234",  // December 2025 (valid)
+                    "4532-1234-5678-9012", "2512", "1234",  // December 2025 (valid)
                 new BigDecimal("100.00"), "Coffee Shop"
             );
             case FAIL_FAST -> new TransactionRequest(  // fail-fast case
-                "12345", "5555-4444-3333-2222", "2312", "9876",  // December 2023 (expired)
+                    "5555-4444-3333-2222", "2312", "9876",  // December 2023 (expired)
                 new BigDecimal("75.00"), "Online Store"
             );
         };

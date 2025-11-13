@@ -25,7 +25,7 @@ public class ScopedValuesDemo {
 
         // Valid transaction - request data will be accessible via ScopedValue
         TransactionRequest validRequest = new TransactionRequest(
-            "11111", "4111-1111-1111-1111", "2512", "5555",  // December 2025 (valid)
+                "4111-1111-1111-1111", "2512", "5555",  // December 2025 (valid)
             new BigDecimal("250.00"), "Restaurant"
         );
 

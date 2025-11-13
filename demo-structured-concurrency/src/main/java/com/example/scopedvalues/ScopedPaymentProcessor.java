@@ -28,7 +28,6 @@ public class ScopedPaymentProcessor {
     public TransactionResult processTransaction(TransactionRequest request) throws Exception {
         long startTime = System.currentTimeMillis();
 
-        System.out.println("🔗 Starting SCOPED VALUES transaction processing for customer " + request.customerId());
 
         // Run the entire transaction within the scoped value context
         return ScopedValue.where(TRANSACTION_REQUEST, request).call(() -> {
@@ -37,7 +36,6 @@ public class ScopedPaymentProcessor {
                 ValidationResult cardResult = cardValidationService.validate();
                 if (!cardResult.success()) {
                     long processingTime = System.currentTimeMillis() - startTime;
-                    auditLog("Transaction failed: " + cardResult.message());
                     System.out.println("❌ SCOPED VALUES transaction failed: " + cardResult.message() +
                                      " (in " + processingTime + "ms)");
                     return TransactionResult.failure(cardResult.message(), processingTime);
@@ -72,7 +70,6 @@ public class ScopedPaymentProcessor {
                             .orElse("Unknown validation error");
 
                         long processingTime = System.currentTimeMillis() - startTime;
-                        auditLog("Transaction failed: " + failureReason);
                         System.out.println("❌ SCOPED VALUES transaction failed: " + failureReason +
                                          " (in " + processingTime + "ms)");
                         return TransactionResult.failure(failureReason, processingTime);
@@ -84,7 +81,6 @@ public class ScopedPaymentProcessor {
                     ValidationResult debitResult = balanceService.debit();
                     if (!debitResult.success()) {
                         long processingTime = System.currentTimeMillis() - startTime;
-                        auditLog("Transaction failed: " + debitResult.message());
                         System.out.println("❌ SCOPED VALUES transaction failed: " + debitResult.message() +
                                          " (in " + processingTime + "ms)");
                         return TransactionResult.failure(debitResult.message(), processingTime);
@@ -93,7 +89,6 @@ public class ScopedPaymentProcessor {
                     // Success!
                     long processingTime = System.currentTimeMillis() - startTime;
                     String transactionId = UUID.randomUUID().toString();
-                    auditLog("Transaction completed successfully: " + transactionId);
                     System.out.println("✅ SCOPED VALUES transaction completed: " + transactionId +
                                      " (in " + processingTime + "ms)");
                     return TransactionResult.success(transactionId, request.amount(), processingTime);
@@ -101,16 +96,10 @@ public class ScopedPaymentProcessor {
 
             } catch (Exception e) {
                 long processingTime = System.currentTimeMillis() - startTime;
-                auditLog("Transaction error: " + e.getMessage());
                 System.out.println("💥 SCOPED VALUES transaction error: " + e.getMessage() +
                                  " (in " + processingTime + "ms)");
                 return TransactionResult.failure("Processing error: " + e.getMessage(), processingTime);
             }
         });
-    }
-
-    private void auditLog(String message) {
-        TransactionRequest req = TRANSACTION_REQUEST.get();
-        System.out.println("📝 AUDIT [Customer: " + req.customerId() + "] " + message);
     }
 }

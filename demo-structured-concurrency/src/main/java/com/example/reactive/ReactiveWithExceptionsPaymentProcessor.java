@@ -39,8 +39,6 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
     public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
         long startTime = System.currentTimeMillis();
 
-        System.out.println("🔄 Starting REACTIVE WITH EXCEPTIONS transaction processing for customer " + request.customerId());
-
         // Step 1: Validate card first (sequential)
         return CompletableFuture
             .supplyAsync(() -> {

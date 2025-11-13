@@ -34,7 +34,6 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
     @Override
     public TransactionResult processTransaction(TransactionRequest request) throws InterruptedException {
         long startTime = System.currentTimeMillis();
-        System.out.println("⚡ Starting FAIL-FAST STRUCTURED transaction processing for customer " + request.customerId());
 
         // Step 1: Validate card first (sequential)
         ValidationResult cardResult = cardValidationService.validate(request.cardNumber());

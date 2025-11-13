@@ -11,16 +11,12 @@ public class ScopedExpirationService {
 
     public ValidationResult validate() {
         TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
-        String cardNumber = request.cardNumber();
         String expirationDate = request.expirationDate();
-
-        auditLog("Starting expiration validation for card: " + cardNumber.substring(cardNumber.length() - 4));
 
         DemoUtil.simulateNetworkDelay(200);
 
         try {
             if (expirationDate.length() != 4) {
-                auditLog("Expiration validation failed: Invalid date format");
                 return ValidationResult.failure("Expiration Check: Invalid date format");
             }
 
@@ -30,21 +26,13 @@ public class ScopedExpirationService {
             YearMonth currentMonth = YearMonth.now();
 
             if (cardExpiry.isBefore(currentMonth)) {
-                auditLog("Expiration validation failed: Card expired");
                 return ValidationResult.failure("Expiration Check: Card expired");
             }
 
-            auditLog("Expiration validation successful");
             return ValidationResult.success("Expiration Check: Validation successful");
         } catch (Exception e) {
-            auditLog("Expiration validation failed: Invalid expiration date format");
             return ValidationResult.failure("Expiration Check: Invalid expiration date format");
         }
-    }
-
-    private void auditLog(String message) {
-        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
-        System.out.println("📅 EXPIRATION [Customer: " + request.customerId() + "] " + message);
     }
 
 }
