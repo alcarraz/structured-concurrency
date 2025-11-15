@@ -36,7 +36,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
         long startTime = System.currentTimeMillis();
 
         // Step 1: Validate card first (sequential)
-        ValidationResult cardResult = cardValidationService.validate(request.cardNumber());
+        ValidationResult cardResult = cardValidationService.validate(request);
         if (!cardResult.success()) {
             long processingTime = System.currentTimeMillis() - startTime;
             System.out.println("❌ FAIL-FAST STRUCTURED transaction failed: " + cardResult.message() +
@@ -47,7 +47,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
         // Step 2: Parallel validations with fail-fast using exceptions
         try (var scope = StructuredTaskScope.open()) {
             var balanceTask = scope.fork(() -> {
-                ValidationResult result = balanceService.validate(request.cardNumber(), request.amount());
+                ValidationResult result = balanceService.validate(request);
                 if (!result.success()) {
                     throw new RuntimeException(result.message());
                 }
@@ -55,7 +55,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
             });
 
             var pinTask = scope.fork(() -> {
-                ValidationResult result = pinValidationService.validate(request.cardNumber(), request.pin());
+                ValidationResult result = pinValidationService.validate(request);
                 if (!result.success()) {
                     throw new RuntimeException(result.message());
                 }
@@ -63,7 +63,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
             });
 
             var expirationTask = scope.fork(() -> {
-                ValidationResult result = expirationService.validate(request.cardNumber(), request.expirationDate());
+                ValidationResult result = expirationService.validate(request);
                 if (!result.success()) {
                     throw new RuntimeException(result.message());
                 }

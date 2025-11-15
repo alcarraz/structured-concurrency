@@ -1,15 +1,19 @@
 package com.example.services;
 
+import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
-public class ExpirationService {
+public class ExpirationService implements ValidationService {
 
-    public ValidationResult validate(String cardNumber, String expirationDate) {
+    @Override
+    public ValidationResult validate(TransactionRequest request) {
         DemoUtil.simulateNetworkDelay(200);
+
+        String expirationDate = request.expirationDate();
 
         try {
             // Parse YYMM format (e.g., "1225" for December 2025)

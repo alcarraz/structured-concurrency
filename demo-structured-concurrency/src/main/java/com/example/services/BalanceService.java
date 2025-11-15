@@ -1,13 +1,17 @@
 package com.example.services;
 
+import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
 import java.math.BigDecimal;
 
-public class BalanceService {
+public class BalanceService implements ValidationService {
 
-    public ValidationResult validate(String cardNumber, BigDecimal amount) {
+    @Override
+    public ValidationResult validate(TransactionRequest request) {
         DemoUtil.simulateNetworkDelay(500);
+
+        BigDecimal amount = request.amount();
 
         // Simple check: fail if amount > 1000 for demo purposes
         if (amount.doubleValue() > 1000) {

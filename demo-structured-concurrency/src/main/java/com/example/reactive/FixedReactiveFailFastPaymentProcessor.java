@@ -43,7 +43,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
 
         // Step 1: Validate card first (sequential)
         return CompletableFuture
-            .supplyAsync(() -> cardValidationService.validate(request.cardNumber()))
+            .supplyAsync(() -> cardValidationService.validate(request))
             .thenCompose(cardResult -> {
                 if (!cardResult.success()) {
                     long processingTime = System.currentTimeMillis() - startTime;
@@ -65,7 +65,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                         if (hasFailed.get()) {
                             throw new CompletionException(new RuntimeException("Cancelled due to earlier failure"));
                         }
-                        ValidationResult result = balanceService.validate(request.cardNumber(), request.amount());
+                        ValidationResult result = balanceService.validate(request);
                         if (!result.success() && hasFailed.compareAndSet(false, true)) {
                             failureReason.set(result.message());
                             futures.forEach(f -> f.cancel(true));
@@ -80,7 +80,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                         if (hasFailed.get()) {
                             throw new CompletionException(new RuntimeException("Cancelled due to earlier failure"));
                         }
-                        ValidationResult result = expirationService.validate(request.cardNumber(), request.expirationDate());
+                        ValidationResult result = expirationService.validate(request);
                         if (!result.success() && hasFailed.compareAndSet(false, true)) {
                             failureReason.set(result.message());
                             futures.forEach(f -> f.cancel(true));
@@ -95,7 +95,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                         if (hasFailed.get()) {
                             throw new CompletionException(new RuntimeException("Cancelled due to earlier failure"));
                         }
-                        ValidationResult result = pinValidationService.validate(request.cardNumber(), request.pin());
+                        ValidationResult result = pinValidationService.validate(request);
                         if (!result.success() && hasFailed.compareAndSet(false, true)) {
                             failureReason.set(result.message());
                             futures.forEach(f -> f.cancel(true));

@@ -45,28 +45,25 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
 
         try {
             // Step 1: Parallel - Validate Merchant AND Consumer (Card)
-            try (var globalScope = StructuredTaskScope.open(StructuredTaskScope.Joiner.allSuccessfulOrThrow())) {
+            try (var globalScope = StructuredTaskScope.open()) {
 
                 // Fork merchant validation
                 var merchantTask = globalScope.fork(() ->
-                    merchantValidationService.validate(request.merchant()));
+                    merchantValidationService.validate(request));
 
                 // Fork consumer validation path (card + nested parallel validations)
                 var consumerTask = globalScope.fork(() -> {
                     // First validate card
-                    ValidationResult cardResult = cardValidationService.validate(request.cardNumber());
+                    ValidationResult cardResult = cardValidationService.validate(request);
                     if (!cardResult.success()) {
                         return cardResult;
                     }
 
                     // Step 2: Parallel - Validate Balance, PIN, and Expiration
-                    try (var consumerScope = StructuredTaskScope.open(StructuredTaskScope.Joiner.allSuccessfulOrThrow())) {
-                        var balanceTask = consumerScope.fork(() ->
-                            balanceService.validate(request.cardNumber(), request.amount()));
-                        var pinTask = consumerScope.fork(() ->
-                            pinValidationService.validate(request.cardNumber(), request.pin()));
-                        var expirationTask = consumerScope.fork(() ->
-                            expirationService.validate(request.cardNumber(), request.expirationDate()));
+                    try (var consumerScope = StructuredTaskScope.open()) {
+                        var balanceTask = consumerScope.fork(() -> balanceService.validate(request));
+                        var pinTask = consumerScope.fork(() -> pinValidationService.validate(request));
+                        var expirationTask = consumerScope.fork(() -> expirationService.validate(request));
 
                         consumerScope.join();
 

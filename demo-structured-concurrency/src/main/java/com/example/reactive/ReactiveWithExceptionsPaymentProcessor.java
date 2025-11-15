@@ -42,7 +42,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
         // Step 1: Validate card first (sequential)
         return CompletableFuture
             .supplyAsync(() -> {
-                ValidationResult result = cardValidationService.validate(request.cardNumber());
+                ValidationResult result = cardValidationService.validate(request);
                 if (!result.success()) {
                     throw new RuntimeException(result.message());
                 }
@@ -54,7 +54,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
                 // Step 2: Parallel validations using SAME exception-based approach as structured concurrency
                 CompletableFuture<ValidationResult> balanceValidation = CompletableFuture
                     .supplyAsync(() -> {
-                        ValidationResult result = balanceService.validate(request.cardNumber(), request.amount());
+                        ValidationResult result = balanceService.validate(request);
                         if (!result.success()) {
                             throw new RuntimeException(result.message());
                         }
@@ -63,7 +63,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
 
                 CompletableFuture<ValidationResult> expirationValidation = CompletableFuture
                     .supplyAsync(() -> {
-                        ValidationResult result = expirationService.validate(request.cardNumber(), request.expirationDate());
+                        ValidationResult result = expirationService.validate(request);
                         if (!result.success()) {
                             throw new RuntimeException(result.message());
                         }
@@ -72,7 +72,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
 
                 CompletableFuture<ValidationResult> pinValidation = CompletableFuture
                     .supplyAsync(() -> {
-                        ValidationResult result = pinValidationService.validate(request.cardNumber(), request.pin());
+                        ValidationResult result = pinValidationService.validate(request);
                         if (!result.success()) {
                             throw new RuntimeException(result.message());
                         }

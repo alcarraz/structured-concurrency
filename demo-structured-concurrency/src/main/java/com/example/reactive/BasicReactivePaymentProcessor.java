@@ -32,7 +32,7 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
 
         // Step 1: Validate card first (sequential)
         return CompletableFuture
-            .supplyAsync(() -> cardValidationService.validate(request.cardNumber()))
+            .supplyAsync(() -> cardValidationService.validate(request))
             .thenCompose(cardResult -> {
                 if (!cardResult.success()) {
                     long processingTime = System.currentTimeMillis() - startTime;
@@ -45,13 +45,13 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
                 // Step 2: Parallel validations if card is valid
                 CompletableFuture<ValidationResult> balanceValidation =
                     CompletableFuture.supplyAsync(() ->
-                        balanceService.validate(request.cardNumber(), request.amount()));
+                        balanceService.validate(request));
                 CompletableFuture<ValidationResult> pinValidation =
                     CompletableFuture.supplyAsync(() ->
-                        pinValidationService.validate(request.cardNumber(), request.pin()));
+                        pinValidationService.validate(request));
                 CompletableFuture<ValidationResult> expirationValidation =
                     CompletableFuture.supplyAsync(() ->
-                        expirationService.validate(request.cardNumber(), request.expirationDate()));
+                        expirationService.validate(request));
 
                 return CompletableFuture.allOf(balanceValidation, pinValidation, expirationValidation)
                     .thenCompose(_ -> {

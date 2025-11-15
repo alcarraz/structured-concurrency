@@ -1,12 +1,16 @@
 package com.example.services;
 
+import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
 
-public class PinValidationService {
+public class PinValidationService implements ValidationService {
 
-    public ValidationResult validate(String ignored, String pin) {
+    @Override
+    public ValidationResult validate(TransactionRequest request) {
         DemoUtil.simulateNetworkDelay(400);
+
+        String pin = request.pin();
 
         // Simple check: fail if PIN is "0000" for demo purposes
         if ("0000".equals(pin)) {
