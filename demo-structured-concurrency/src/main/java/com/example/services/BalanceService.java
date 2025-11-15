@@ -24,4 +24,12 @@ public class BalanceService {
         return ValidationResult.success("Balance Debit: Amount successfully debited");
     }
 
+    public ValidationResult transfer(String cardNumber, String merchant, BigDecimal amount) {
+        DemoUtil.simulateNetworkDelay(500);
+
+        // Simulate transfer operation
+        System.out.println("💸 Transferring " + amount + " from card " + cardNumber.substring(cardNumber.length() - 4) + " to " + merchant);
+        return ValidationResult.success("Transfer: Amount successfully transferred");
+    }
+
 }
