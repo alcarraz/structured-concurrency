@@ -10,7 +10,6 @@ import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.StructuredTaskScope;
 
@@ -30,6 +29,7 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
     private final PinValidationService pinValidationService;
     private final MerchantValidationService merchantValidationService;
 
+    private static final ValidationResult SUCCESS = ValidationResult.success("All validations passed");
     public StructuredPaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
@@ -74,15 +74,10 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
                             expirationTask.get()
                         );
 
-                        Optional<ValidationResult> cardFailure = cardResults.stream()
+                        return cardResults.stream()
                             .filter(r -> !r.success())
-                            .findFirst();
-
-                        if (cardFailure.isPresent()) {
-                            return cardFailure.get();
-                        }
-
-                        return ValidationResult.success("All card validations passed");
+                            .findFirst()
+                            .orElse(SUCCESS);
 
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
