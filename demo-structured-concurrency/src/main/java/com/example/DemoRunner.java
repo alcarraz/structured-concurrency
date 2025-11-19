@@ -1,5 +1,6 @@
 package com.example;
 
+import com.example.demos.BalanceLockingDemo;
 import com.example.demos.CompareDemo;
 import com.example.demos.CompareFailureDemo;
 import com.example.demos.ReactiveDemo;
@@ -25,6 +26,7 @@ public class DemoRunner {
             System.out.println("  scoped-values         - Scoped Values demo (context propagation)");
             System.out.println("  compare               - Side-by-side performance comparison");
             System.out.println("  compare-failure       - Early failure behavior comparison");
+            System.out.println("  balance-locking       - Balance lock/unlock behavior demo");
             System.out.println();
             System.out.println("Example scenarios:");
             System.out.println("  • Valid transaction:   Customer 12345, Card 4532-1234-5678-9012, PIN 1234");
@@ -45,6 +47,7 @@ public class DemoRunner {
                 case "scoped-values" -> new ScopedValuesDemo().main();
                 case "compare" -> new CompareDemo().main();
                 case "compare-failure" -> new CompareFailureDemo().main();
+                case "balance-locking" -> new BalanceLockingDemo().main();
                 default -> {
                     System.out.println("❌ Unknown demo type: " + demoType);
                     System.out.println("Run without arguments to see available options.");

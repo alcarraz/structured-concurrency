@@ -81,6 +81,7 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
 
                 // Check merchant result
                 if (!merchantResult.success()) {
+                    balanceService.releaseAmount(request);
                     long processingTime = System.currentTimeMillis() - startTime;
                     System.out.println("❌ REACTIVE transaction failed: " + merchantResult.message() +
                                      " (in " + processingTime + "ms)");
@@ -90,6 +91,7 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
 
                 // Check consumer result
                 if (!consumerResult.success()) {
+                    balanceService.releaseAmount(request);
                     long processingTime = System.currentTimeMillis() - startTime;
                     System.out.println("❌ REACTIVE transaction failed: " + consumerResult.message() +
                                      " (in " + processingTime + "ms)");
@@ -99,7 +101,7 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
 
                 // Step 2: Transfer amount if both paths succeeded
                 return CompletableFuture
-                    .supplyAsync(() -> balanceService.transfer(request.cardNumber(), request.merchant(), request.amount()))
+                    .supplyAsync(() -> balanceService.transfer(request))
                     .thenApply(transferResult -> {
                         long processingTime = System.currentTimeMillis() - startTime;
 

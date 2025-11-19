@@ -89,6 +89,7 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
             ValidationResult consumerResult = consumerTask.get();
 
             if (!merchantResult.success()) {
+                balanceService.releaseAmount(request);
                 long processingTime = System.currentTimeMillis() - startTime;
                 System.out.println("❌ STRUCTURED transaction failed: " + merchantResult.message() +
                                  " (in " + processingTime + "ms)");
@@ -96,6 +97,7 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
             }
 
             if (!consumerResult.success()) {
+                balanceService.releaseAmount(request);
                 long processingTime = System.currentTimeMillis() - startTime;
                 System.out.println("❌ STRUCTURED transaction failed: " + consumerResult.message() +
                                  " (in " + processingTime + "ms)");
@@ -104,11 +106,7 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
         }
 
         // Step 3: Transfer amount if all validations passed
-        ValidationResult transferResult = balanceService.transfer(
-            request.cardNumber(),
-            request.merchant(),
-            request.amount()
-        );
+        ValidationResult transferResult = balanceService.transfer(request);
         long processingTime = System.currentTimeMillis() - startTime;
 
         if (transferResult.success()) {

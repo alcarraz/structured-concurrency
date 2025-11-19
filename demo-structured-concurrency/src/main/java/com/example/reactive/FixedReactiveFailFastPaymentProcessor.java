@@ -145,11 +145,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 // Step 3: Transfer amount if all validations passed
                 System.out.println("✅ All validations passed, proceeding with transfer...");
                 return CompletableFuture.supplyAsync(() -> {
-                    ValidationResult transferResult = balanceService.transfer(
-                        request.cardNumber(),
-                        request.merchant(),
-                        request.amount()
-                    );
+                    ValidationResult transferResult = balanceService.transfer(request);
                     if (!transferResult.success()) {
                         throw new CompletionException(new RuntimeException(transferResult.message()));
                     }

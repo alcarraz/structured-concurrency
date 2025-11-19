@@ -105,11 +105,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
             }
 
             // Step 3: Transfer amount if all validations passed
-            ValidationResult transferResult = balanceService.transfer(
-                request.cardNumber(),
-                request.merchant(),
-                request.amount()
-            );
+            ValidationResult transferResult = balanceService.transfer(request);
             long processingTime = System.currentTimeMillis() - startTime;
 
             if (transferResult.success()) {
@@ -124,6 +120,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
             }
 
         } catch (StructuredTaskScope.FailedException e) {
+            balanceService.releaseAmount(request);
             long processingTime = System.currentTimeMillis() - startTime;
             String failureMessage = e.getCause().getMessage();
             System.out.println("❌ FAIL-FAST STRUCTURED transaction failed: " + failureMessage +
