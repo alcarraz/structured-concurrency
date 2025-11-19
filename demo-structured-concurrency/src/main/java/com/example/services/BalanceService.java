@@ -20,14 +20,6 @@ public class BalanceService implements ValidationService {
         return ValidationResult.success("Balance Check: Validation successful");
     }
 
-    public ValidationResult debit(String cardNumber, BigDecimal amount) {
-        DemoUtil.simulateNetworkDelay(500);
-
-        // Simulate debit operation
-        System.out.println("💳 Debiting " + amount + " from card " + cardNumber.substring(cardNumber.length() - 4));
-        return ValidationResult.success("Balance Debit: Amount successfully debited");
-    }
-
     public ValidationResult transfer(String cardNumber, String merchant, BigDecimal amount) {
         DemoUtil.simulateNetworkDelay(500);
 
