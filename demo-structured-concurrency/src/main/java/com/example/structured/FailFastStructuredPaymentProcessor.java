@@ -94,10 +94,6 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
                         consumerScope.join();
 
                         return ValidationResult.success("All card validations passed");
-
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException("Card validation interrupted");
                     }
                 });
 
@@ -134,11 +130,6 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
                              " (in " + processingTime + "ms)");
             System.out.println("   ⚡ Other validations were automatically cancelled!");
             return TransactionResult.failure(failureMessage, processingTime);
-        } catch (Exception e) {
-            long processingTime = System.currentTimeMillis() - startTime;
-            System.out.println("💥 FAIL-FAST STRUCTURED transaction error: " + e.getMessage() +
-                             " (in " + processingTime + "ms)");
-            return TransactionResult.failure("Processing error: " + e.getMessage(), processingTime);
         }
     }
 }

@@ -43,94 +43,83 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
         long startTime = System.currentTimeMillis();
         System.out.println("🚀 Starting STRUCTURED transaction processing for merchant " + request.merchant());
 
-        try {
-            // Step 1: Parallel - Validate Merchant AND Consumer (Card)
-            try (var globalScope = StructuredTaskScope.open()) {
+        // Step 1: Parallel - Validate Merchant AND Consumer (Card)
+        try (var globalScope = StructuredTaskScope.open()) {
 
-                // Fork merchant validation
-                var merchantTask = globalScope.fork(() ->
-                    merchantValidationService.validate(request));
+            // Fork merchant validation
+            var merchantTask = globalScope.fork(() ->
+                merchantValidationService.validate(request));
 
-                // Fork consumer validation path (card + nested parallel validations)
-                var consumerTask = globalScope.fork(() -> {
-                    // First validate card
-                    ValidationResult cardResult = cardValidationService.validate(request);
-                    if (!cardResult.success()) {
-                        return cardResult;
-                    }
-
-                    // Step 2: Parallel - Validate Balance, PIN, and Expiration
-                    try (var consumerScope = StructuredTaskScope.open()) {
-                        var balanceTask = consumerScope.fork(() -> balanceService.validate(request));
-                        var pinTask = consumerScope.fork(() -> pinValidationService.validate(request));
-                        var expirationTask = consumerScope.fork(() -> expirationService.validate(request));
-
-                        consumerScope.join();
-
-                        // Check all card validation results
-                        List<ValidationResult> cardResults = List.of(
-                            balanceTask.get(),
-                            pinTask.get(),
-                            expirationTask.get()
-                        );
-
-                        return cardResults.stream()
-                            .filter(r -> !r.success())
-                            .findFirst()
-                            .orElse(SUCCESS);
-
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return ValidationResult.failure("Card validation interrupted");
-                    }
-                });
-
-                // Wait for both parallel paths to complete
-                globalScope.join();
-
-                // Check results from both paths
-                ValidationResult merchantResult = merchantTask.get();
-                ValidationResult consumerResult = consumerTask.get();
-
-                if (!merchantResult.success()) {
-                    long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ STRUCTURED transaction failed: " + merchantResult.message() +
-                                     " (in " + processingTime + "ms)");
-                    return TransactionResult.failure(merchantResult.message(), processingTime);
+            // Fork consumer validation path (card + nested parallel validations)
+            var consumerTask = globalScope.fork(() -> {
+                // First validate card
+                ValidationResult cardResult = cardValidationService.validate(request);
+                if (!cardResult.success()) {
+                    return cardResult;
                 }
 
-                if (!consumerResult.success()) {
-                    long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ STRUCTURED transaction failed: " + consumerResult.message() +
-                                     " (in " + processingTime + "ms)");
-                    return TransactionResult.failure(consumerResult.message(), processingTime);
+                // Step 2: Parallel - Validate Balance, PIN, and Expiration
+                try (var consumerScope = StructuredTaskScope.open()) {
+                    var balanceTask = consumerScope.fork(() -> balanceService.validate(request));
+                    var pinTask = consumerScope.fork(() -> pinValidationService.validate(request));
+                    var expirationTask = consumerScope.fork(() -> expirationService.validate(request));
+
+                    consumerScope.join();
+
+                    // Check all card validation results
+                    List<ValidationResult> cardResults = List.of(
+                        balanceTask.get(),
+                        pinTask.get(),
+                        expirationTask.get()
+                    );
+
+                    return cardResults.stream()
+                        .filter(r -> !r.success())
+                        .findFirst()
+                        .orElse(SUCCESS);
+
                 }
+            });
+
+            // Wait for both parallel paths to complete
+            globalScope.join();
+
+            // Check results from both paths
+            ValidationResult merchantResult = merchantTask.get();
+            ValidationResult consumerResult = consumerTask.get();
+
+            if (!merchantResult.success()) {
+                long processingTime = System.currentTimeMillis() - startTime;
+                System.out.println("❌ STRUCTURED transaction failed: " + merchantResult.message() +
+                                 " (in " + processingTime + "ms)");
+                return TransactionResult.failure(merchantResult.message(), processingTime);
             }
 
-            // Step 3: Transfer amount if all validations passed
-            ValidationResult transferResult = balanceService.transfer(
-                request.cardNumber(),
-                request.merchant(),
-                request.amount()
-            );
-            long processingTime = System.currentTimeMillis() - startTime;
-
-            if (transferResult.success()) {
-                String transactionId = UUID.randomUUID().toString();
-                System.out.println("✅ STRUCTURED transaction completed: " + transactionId +
-                        " (in " + processingTime + "ms)");
-                return TransactionResult.success(transactionId, request.amount(), processingTime);
-            } else {
-                System.out.println("❌ STRUCTURED transaction failed: " + transferResult.message() +
-                        " (in " + processingTime + "ms)");
-                return TransactionResult.failure(transferResult.message(), processingTime);
+            if (!consumerResult.success()) {
+                long processingTime = System.currentTimeMillis() - startTime;
+                System.out.println("❌ STRUCTURED transaction failed: " + consumerResult.message() +
+                                 " (in " + processingTime + "ms)");
+                return TransactionResult.failure(consumerResult.message(), processingTime);
             }
+        }
 
-        } catch (Exception e) {
-            long processingTime = System.currentTimeMillis() - startTime;
-            System.out.println("💥 STRUCTURED transaction error: " + e.getMessage() +
-                             " (in " + processingTime + "ms)");
-            return TransactionResult.failure("Processing error: " + e.getMessage(), processingTime);
+        // Step 3: Transfer amount if all validations passed
+        ValidationResult transferResult = balanceService.transfer(
+            request.cardNumber(),
+            request.merchant(),
+            request.amount()
+        );
+        long processingTime = System.currentTimeMillis() - startTime;
+
+        if (transferResult.success()) {
+            String transactionId = UUID.randomUUID().toString();
+            System.out.println("✅ STRUCTURED transaction completed: " + transactionId +
+                    " (in " + processingTime + "ms)");
+            return TransactionResult.success(transactionId, request.amount(), processingTime);
+        } else {
+            System.out.println("❌ STRUCTURED transaction failed: " + transferResult.message() +
+                    " (in " + processingTime + "ms)");
+            return TransactionResult.failure(transferResult.message(), processingTime);
         }
     }
 }
