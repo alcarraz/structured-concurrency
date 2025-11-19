@@ -6,6 +6,7 @@ import com.example.model.ValidationResult;
 import com.example.services.BalanceService;
 import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
+import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,12 +29,14 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
     private final ExpirationService expirationService;
+    private final MerchantValidationService merchantValidationService;
     private final PinValidationService pinValidationService;
 
     public FixedReactiveFailFastPaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
         this.expirationService = new ExpirationService();
+        this.merchantValidationService = new MerchantValidationService();
         this.pinValidationService = new PinValidationService();
     }
 
@@ -41,20 +44,26 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
     public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
         long startTime = System.currentTimeMillis();
 
-        // Step 1: Validate card first (sequential)
-        return CompletableFuture
-            .supplyAsync(() -> cardValidationService.validate(request))
-            .thenCompose(cardResult -> {
+        // PATH A: Merchant validation (runs independently with fail-fast)
+        CompletableFuture<ValidationResult> merchantValidation = CompletableFuture
+            .supplyAsync(() -> {
+                ValidationResult result = merchantValidationService.validate(request);
+                if (!result.success()) {
+                    throw new CompletionException(new RuntimeException(result.message()));
+                }
+                return result;
+            });
+
+        // PATH B: Consumer validation (card → nested parallel validations with fail-fast)
+        CompletableFuture<ValidationResult> consumerValidation = CompletableFuture
+            .supplyAsync(() -> {
+                // B1: Validate card first
+                ValidationResult cardResult = cardValidationService.validate(request);
                 if (!cardResult.success()) {
-                    long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ FIXED REACTIVE FAIL-FAST transaction failed: " + cardResult.message() +
-                                     " (in " + processingTime + "ms)");
-                    return CompletableFuture.completedFuture(TransactionResult.failure(cardResult.message(), processingTime));
+                    throw new CompletionException(new RuntimeException(cardResult.message()));
                 }
 
-                System.out.println("✅ Card validation passed, proceeding with parallel validations...");
-
-                // Step 2: Parallel validations with fail-fast coordination
+                // B2: Nested parallel validations with fail-fast coordination
                 AtomicBoolean hasFailed = new AtomicBoolean(false);
                 AtomicReference<String> failureReason = new AtomicReference<>();
                 List<CompletableFuture<ValidationResult>> futures = new ArrayList<>();
@@ -107,47 +116,70 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 futures.addAll(List.of(balanceFuture, expirationFuture, pinFuture));
 
                 // Wait for all parallel validations or first failure
-                return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                    .thenCompose(v -> {
-                        // Step 3: All validations passed, proceed with debit
-                        System.out.println("✅ All validations passed, proceeding with debit...");
-                        return CompletableFuture.supplyAsync(() ->
-                            balanceService.debit(request.cardNumber(), request.amount()));
-                    })
-                    .thenApply(debitResult -> {
-                        if (!debitResult.success()) {
-                            long processingTime = System.currentTimeMillis() - startTime;
-                            System.out.println("❌ FIXED REACTIVE FAIL-FAST transaction failed: " + debitResult.message() +
-                                             " (in " + processingTime + "ms)");
-                            return TransactionResult.failure(debitResult.message(), processingTime);
-                        }
+                try {
+                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+                    return ValidationResult.success("All consumer validations passed");
+                } catch (CompletionException e) {
+                    String reason = failureReason.get();
+                    if (reason == null && e.getCause() != null) {
+                        reason = e.getCause().getMessage();
+                    }
+                    throw new CompletionException(new RuntimeException(reason != null ? reason : "Consumer validation failed"));
+                }
+            });
 
-                        long processingTime = System.currentTimeMillis() - startTime;
-                        String transactionId = UUID.randomUUID().toString();
+        // Wait for BOTH parallel paths (merchant AND consumer)
+        return CompletableFuture.allOf(merchantValidation, consumerValidation)
+            .thenCompose(_ -> {
+                // Check results from both paths
+                ValidationResult merchantResult = merchantValidation.join();
+                ValidationResult consumerResult = consumerValidation.join();
 
-                        System.out.println("✅ FIXED REACTIVE FAIL-FAST transaction completed: " + transactionId +
-                                         " (in " + processingTime + "ms)");
+                if (!merchantResult.success()) {
+                    throw new CompletionException(new RuntimeException(merchantResult.message()));
+                }
+                if (!consumerResult.success()) {
+                    throw new CompletionException(new RuntimeException(consumerResult.message()));
+                }
 
-                        return TransactionResult.success(transactionId, request.amount(), processingTime);
-                    })
-                    .exceptionally(throwable -> {
-                        long processingTime = System.currentTimeMillis() - startTime;
-                        String reason = failureReason.get();
+                // Step 3: Transfer amount if all validations passed
+                System.out.println("✅ All validations passed, proceeding with transfer...");
+                return CompletableFuture.supplyAsync(() -> {
+                    ValidationResult transferResult = balanceService.transfer(
+                        request.cardNumber(),
+                        request.merchant(),
+                        request.amount()
+                    );
+                    if (!transferResult.success()) {
+                        throw new CompletionException(new RuntimeException(transferResult.message()));
+                    }
+                    return transferResult;
+                });
+            })
+            .thenApply(_ -> {
+                long processingTime = System.currentTimeMillis() - startTime;
+                String transactionId = UUID.randomUUID().toString();
 
-                        if (reason == null) {
-                            if (throwable.getCause() != null) {
-                                reason = throwable.getCause().getMessage();
-                            } else {
-                                reason = "Processing error: " + throwable.getMessage();
-                            }
-                        }
+                System.out.println("✅ FIXED REACTIVE FAIL-FAST transaction completed: " + transactionId +
+                                 " (in " + processingTime + "ms)");
 
-                        System.out.println("❌ FIXED REACTIVE FAIL-FAST transaction failed: " + reason +
-                                         " (in " + processingTime + "ms)");
-                        System.out.println("   ⚡ Attempted to cancel remaining validations");
+                return TransactionResult.success(transactionId, request.amount(), processingTime);
+            })
+            .exceptionally(throwable -> {
+                long processingTime = System.currentTimeMillis() - startTime;
+                String reason = "Processing error";
 
-                        return TransactionResult.failure(reason, processingTime);
-                    });
+                if (throwable instanceof CompletionException ce && ce.getCause() != null) {
+                    reason = ce.getCause().getMessage();
+                } else if (throwable.getCause() != null) {
+                    reason = throwable.getCause().getMessage();
+                }
+
+                System.out.println("❌ FIXED REACTIVE FAIL-FAST transaction failed: " + reason +
+                                 " (in " + processingTime + "ms)");
+                System.out.println("   ⚡ Attempted to cancel remaining validations");
+
+                return TransactionResult.failure(reason, processingTime);
             });
     }
 

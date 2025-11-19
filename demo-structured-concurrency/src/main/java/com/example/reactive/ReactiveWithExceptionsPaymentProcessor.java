@@ -6,6 +6,7 @@ import com.example.model.ValidationResult;
 import com.example.services.BalanceService;
 import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
+import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 
 import java.util.UUID;
@@ -26,12 +27,14 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
     private final ExpirationService expirationService;
+    private final MerchantValidationService merchantValidationService;
     private final PinValidationService pinValidationService;
 
     public ReactiveWithExceptionsPaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
         this.expirationService = new ExpirationService();
+        this.merchantValidationService = new MerchantValidationService();
         this.pinValidationService = new PinValidationService();
     }
 
@@ -39,19 +42,26 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
     public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
         long startTime = System.currentTimeMillis();
 
-        // Step 1: Validate card first (sequential)
-        return CompletableFuture
-            .supplyAsync(() -> {
-                ValidationResult result = cardValidationService.validate(request);
+        // PATH A: Merchant validation (runs independently)
+        CompletableFuture<ValidationResult> merchantValidation =
+            CompletableFuture.supplyAsync(() -> {
+                ValidationResult result = merchantValidationService.validate(request);
                 if (!result.success()) {
                     throw new RuntimeException(result.message());
                 }
                 return result;
-            })
-            .thenCompose(cardResult -> {
-                System.out.println("✅ Card validation passed, proceeding with parallel validations...");
+            });
 
-                // Step 2: Parallel validations using SAME exception-based approach as structured concurrency
+        // PATH B: Consumer validation (card → nested parallel validations)
+        CompletableFuture<ValidationResult> consumerValidation =
+            CompletableFuture.supplyAsync(() -> {
+                // B1: Validate card first
+                ValidationResult cardResult = cardValidationService.validate(request);
+                if (!cardResult.success()) {
+                    throw new RuntimeException(cardResult.message());
+                }
+
+                // B2: Nested parallel validations using SAME exception-based approach as structured concurrency
                 CompletableFuture<ValidationResult> balanceValidation = CompletableFuture
                     .supplyAsync(() -> {
                         ValidationResult result = balanceService.validate(request);
@@ -81,27 +91,48 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
 
                 // CompletableFuture.allOf() waits for ALL tasks to complete (or fail)
                 // This is the KEY difference from StructuredTaskScope which cancels immediately
-                return CompletableFuture.allOf(balanceValidation, expirationValidation, pinValidation)
-                    .thenCompose(_ -> {
-                        System.out.println("✅ All validations passed, proceeding with debit...");
-                        // Step 3: Debit the amount
-                        return CompletableFuture.supplyAsync(() -> {
-                            ValidationResult debitResult = balanceService.debit(request.cardNumber(), request.amount());
-                            if (!debitResult.success()) {
-                                throw new RuntimeException(debitResult.message());
-                            }
-                            return debitResult;
-                        });
-                    })
-                    .thenApply(debitResult -> {
-                        long processingTime = System.currentTimeMillis() - startTime;
-                        String transactionId = UUID.randomUUID().toString();
+                CompletableFuture.allOf(balanceValidation, expirationValidation, pinValidation).join();
 
-                        System.out.println("✅ REACTIVE WITH EXCEPTIONS transaction completed: " + transactionId +
-                                         " (in " + processingTime + "ms)");
+                // If we get here, all validations passed
+                return ValidationResult.success("All consumer validations passed");
+            });
 
-                        return TransactionResult.success(transactionId, request.amount(), processingTime);
-                    });
+        // Wait for BOTH parallel paths (merchant AND consumer)
+        return CompletableFuture.allOf(merchantValidation, consumerValidation)
+            .thenCompose(_ -> {
+                // Check results from both paths
+                ValidationResult merchantResult = merchantValidation.join();
+                ValidationResult consumerResult = consumerValidation.join();
+
+                if (!merchantResult.success()) {
+                    throw new RuntimeException(merchantResult.message());
+                }
+                if (!consumerResult.success()) {
+                    throw new RuntimeException(consumerResult.message());
+                }
+
+                // Step 3: Transfer amount if all validations passed
+                System.out.println("✅ All validations passed, proceeding with transfer...");
+                return CompletableFuture.supplyAsync(() -> {
+                    ValidationResult transferResult = balanceService.transfer(
+                        request.cardNumber(),
+                        request.merchant(),
+                        request.amount()
+                    );
+                    if (!transferResult.success()) {
+                        throw new RuntimeException(transferResult.message());
+                    }
+                    return transferResult;
+                });
+            })
+            .thenApply(_ -> {
+                long processingTime = System.currentTimeMillis() - startTime;
+                String transactionId = UUID.randomUUID().toString();
+
+                System.out.println("✅ REACTIVE WITH EXCEPTIONS transaction completed: " + transactionId +
+                                 " (in " + processingTime + "ms)");
+
+                return TransactionResult.success(transactionId, request.amount(), processingTime);
             })
             .exceptionally(throwable -> {
                 long processingTime = System.currentTimeMillis() - startTime;
