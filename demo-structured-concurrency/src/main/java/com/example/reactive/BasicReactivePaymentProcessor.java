@@ -6,6 +6,7 @@ import com.example.model.ValidationResult;
 import com.example.services.BalanceService;
 import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
+import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 
 import java.util.List;
@@ -18,79 +19,100 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
     private final CardValidationService cardValidationService;
     private final ExpirationService expirationService;
     private final PinValidationService pinValidationService;
+    private final MerchantValidationService merchantValidationService;
 
     public BasicReactivePaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
         this.expirationService = new ExpirationService();
         this.pinValidationService = new PinValidationService();
+        this.merchantValidationService = new MerchantValidationService();
     }
 
     @Override
     public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
         long startTime = System.currentTimeMillis();
 
-        // Step 1: Validate card first (sequential)
-        return CompletableFuture
-            .supplyAsync(() -> cardValidationService.validate(request))
-            .thenCompose(cardResult -> {
+        // Step 1: Run merchant validation in parallel with ENTIRE consumer validation flow
+
+        // PATH A: Merchant validation (runs independently)
+        CompletableFuture<ValidationResult> merchantValidation =
+            CompletableFuture.supplyAsync(() -> merchantValidationService.validate(request));
+
+        // PATH B: Consumer validation (card → nested parallel validations)
+        CompletableFuture<ValidationResult> consumerValidation =
+            CompletableFuture.supplyAsync(() -> {
+                // B1: Validate card first (sequential within consumer path)
+                ValidationResult cardResult = cardValidationService.validate(request);
                 if (!cardResult.success()) {
-                    long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ REACTIVE transaction failed: " + cardResult.message() +
-                                     " (in " + processingTime + "ms)");
-                    return CompletableFuture.completedFuture(
-                        TransactionResult.failure(cardResult.message(), processingTime));
+                    return cardResult;
                 }
 
-                // Step 2: Parallel validations if card is valid
+                // B2: Nested parallel validations (balance, PIN, expiration)
                 CompletableFuture<ValidationResult> balanceValidation =
-                    CompletableFuture.supplyAsync(() ->
-                        balanceService.validate(request));
+                    CompletableFuture.supplyAsync(() -> balanceService.validate(request));
                 CompletableFuture<ValidationResult> pinValidation =
-                    CompletableFuture.supplyAsync(() ->
-                        pinValidationService.validate(request));
+                    CompletableFuture.supplyAsync(() -> pinValidationService.validate(request));
                 CompletableFuture<ValidationResult> expirationValidation =
-                    CompletableFuture.supplyAsync(() ->
-                        expirationService.validate(request));
+                    CompletableFuture.supplyAsync(() -> expirationService.validate(request));
 
-                return CompletableFuture.allOf(balanceValidation, pinValidation, expirationValidation)
-                    .thenCompose(_ -> {
-                        // Check all parallel validation results
-                        List<ValidationResult> results = List.of(
-                            balanceValidation.join(),
-                            pinValidation.join(),
-                            expirationValidation.join()
-                        );
+                // Wait for all nested validations
+                CompletableFuture.allOf(balanceValidation, pinValidation, expirationValidation).join();
 
-                        Optional<ValidationResult> failure = results.stream()
-                            .filter(r -> !r.success())
-                            .findFirst();
+                // Check nested validation results
+                List<ValidationResult> results = List.of(
+                    balanceValidation.join(),
+                    pinValidation.join(),
+                    expirationValidation.join()
+                );
 
-                        if (failure.isPresent()) {
-                            long processingTime = System.currentTimeMillis() - startTime;
-                            System.out.println("❌ REACTIVE transaction failed: " + failure.get().message() +
+                Optional<ValidationResult> failure = results.stream()
+                    .filter(r -> !r.success())
+                    .findFirst();
+
+                return failure.orElse(ValidationResult.success("All card validations passed"));
+            });
+
+        // Wait for BOTH parallel paths (merchant + complete consumer flow)
+        return CompletableFuture.allOf(merchantValidation, consumerValidation)
+            .thenCompose(_ -> {
+                ValidationResult merchantResult = merchantValidation.join();
+                ValidationResult consumerResult = consumerValidation.join();
+
+                // Check merchant result
+                if (!merchantResult.success()) {
+                    long processingTime = System.currentTimeMillis() - startTime;
+                    System.out.println("❌ REACTIVE transaction failed: " + merchantResult.message() +
+                                     " (in " + processingTime + "ms)");
+                    return CompletableFuture.completedFuture(
+                        TransactionResult.failure(merchantResult.message(), processingTime));
+                }
+
+                // Check consumer result
+                if (!consumerResult.success()) {
+                    long processingTime = System.currentTimeMillis() - startTime;
+                    System.out.println("❌ REACTIVE transaction failed: " + consumerResult.message() +
+                                     " (in " + processingTime + "ms)");
+                    return CompletableFuture.completedFuture(
+                        TransactionResult.failure(consumerResult.message(), processingTime));
+                }
+
+                // Step 2: Transfer amount if both paths succeeded
+                return CompletableFuture
+                    .supplyAsync(() -> balanceService.transfer(request.cardNumber(), request.merchant(), request.amount()))
+                    .thenApply(transferResult -> {
+                        long processingTime = System.currentTimeMillis() - startTime;
+
+                        if (transferResult.success()) {
+                            String transactionId = UUID.randomUUID().toString();
+                            System.out.println("✅ REACTIVE transaction completed: " + transactionId +
                                              " (in " + processingTime + "ms)");
-                            return CompletableFuture.completedFuture(
-                                TransactionResult.failure(failure.get().message(), processingTime));
+                            return TransactionResult.success(transactionId, request.amount(), processingTime);
+                        } else {
+                            System.out.println("❌ REACTIVE transaction failed: " + transferResult.message() +
+                                             " (in " + processingTime + "ms)");
+                            return TransactionResult.failure(transferResult.message(), processingTime);
                         }
-
-                        // Step 3: Debit amount if all validations passed
-                        return CompletableFuture
-                            .supplyAsync(() -> balanceService.debit(request.cardNumber(), request.amount()))
-                            .thenApply(debitResult -> {
-                                long processingTime = System.currentTimeMillis() - startTime;
-
-                                if (debitResult.success()) {
-                                    String transactionId = UUID.randomUUID().toString();
-                                    System.out.println("✅ REACTIVE transaction completed: " + transactionId +
-                                                     " (in " + processingTime + "ms)");
-                                    return TransactionResult.success(transactionId, request.amount(), processingTime);
-                                } else {
-                                    System.out.println("❌ REACTIVE transaction failed: " + debitResult.message() +
-                                                     " (in " + processingTime + "ms)");
-                                    return TransactionResult.failure(debitResult.message(), processingTime);
-                                }
-                            });
                     });
             })
             .exceptionally(throwable -> {
