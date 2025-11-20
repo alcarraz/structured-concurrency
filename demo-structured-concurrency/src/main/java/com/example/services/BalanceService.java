@@ -88,7 +88,7 @@ public class BalanceService implements ValidationService {
      * Transfers the amount from card to merchant.
      * Consumes the locked amount and debits the balance.
      */
-    public ValidationResult transfer(TransactionRequest request) {
+    public void transfer(TransactionRequest request) {
         DemoUtil.simulateNetworkDelay(500);
 
         String cardNumber = request.cardNumber();
@@ -109,7 +109,6 @@ public class BalanceService implements ValidationService {
             // now we should put the money in the merchant account
 
             System.out.println("💸 Transferring " + amount + " from card " + cardNumber.substring(cardNumber.length() - 4) + " to " + merchant);
-            return ValidationResult.success("Transfer: Amount successfully transferred");
         } finally {
             lock.unlock();
         }

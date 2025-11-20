@@ -113,13 +113,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
 
                 // Step 3: Transfer amount if all validations passed
                 System.out.println("✅ All validations passed, proceeding with transfer...");
-                return CompletableFuture.supplyAsync(() -> {
-                    ValidationResult transferResult = balanceService.transfer(request);
-                    if (!transferResult.success()) {
-                        throw new RuntimeException(transferResult.message());
-                    }
-                    return transferResult;
-                });
+                return CompletableFuture.runAsync(() -> balanceService.transfer(request));
             })
             .thenApply(_ -> {
                 long processingTime = System.currentTimeMillis() - startTime;

@@ -106,18 +106,12 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
         }
 
         // Step 3: Transfer amount if all validations passed
-        ValidationResult transferResult = balanceService.transfer(request);
+        balanceService.transfer(request);
         long processingTime = System.currentTimeMillis() - startTime;
 
-        if (transferResult.success()) {
-            String transactionId = UUID.randomUUID().toString();
-            System.out.println("✅ STRUCTURED transaction completed: " + transactionId +
-                    " (in " + processingTime + "ms)");
-            return TransactionResult.success(transactionId, request.amount(), processingTime);
-        } else {
-            System.out.println("❌ STRUCTURED transaction failed: " + transferResult.message() +
-                    " (in " + processingTime + "ms)");
-            return TransactionResult.failure(transferResult.message(), processingTime);
-        }
+        String transactionId = UUID.randomUUID().toString();
+        System.out.println("✅ STRUCTURED transaction completed: " + transactionId +
+                " (in " + processingTime + "ms)");
+        return TransactionResult.success(transactionId, request.amount(), processingTime);
     }
 }

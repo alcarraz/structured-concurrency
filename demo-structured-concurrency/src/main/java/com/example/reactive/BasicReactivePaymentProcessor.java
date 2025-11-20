@@ -101,20 +101,14 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
 
                 // Step 2: Transfer amount if both paths succeeded
                 return CompletableFuture
-                    .supplyAsync(() -> balanceService.transfer(request))
-                    .thenApply(transferResult -> {
+                    .runAsync(() -> balanceService.transfer(request))
+                    .thenApply(_ -> {
                         long processingTime = System.currentTimeMillis() - startTime;
 
-                        if (transferResult.success()) {
-                            String transactionId = UUID.randomUUID().toString();
-                            System.out.println("✅ REACTIVE transaction completed: " + transactionId +
-                                             " (in " + processingTime + "ms)");
-                            return TransactionResult.success(transactionId, request.amount(), processingTime);
-                        } else {
-                            System.out.println("❌ REACTIVE transaction failed: " + transferResult.message() +
-                                             " (in " + processingTime + "ms)");
-                            return TransactionResult.failure(transferResult.message(), processingTime);
-                        }
+                        String transactionId = UUID.randomUUID().toString();
+                        System.out.println("✅ REACTIVE transaction completed: " + transactionId +
+                                         " (in " + processingTime + "ms)");
+                        return TransactionResult.success(transactionId, request.amount(), processingTime);
                     });
             })
             .exceptionally(throwable -> {
