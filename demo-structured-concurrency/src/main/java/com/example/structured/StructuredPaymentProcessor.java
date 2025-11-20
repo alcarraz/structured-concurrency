@@ -13,6 +13,7 @@ import com.example.services.ValidationService;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.StructuredTaskScope.Joiner;
 import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.stream.Stream;
 
@@ -47,7 +48,7 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
         System.out.println("🚀 Starting STRUCTURED transaction processing for merchant " + request.merchant());
 
         // Step 1: Parallel - Validate Merchant AND Consumer (Card)
-        try (var globalScope = StructuredTaskScope.open()) {
+        try (var globalScope = StructuredTaskScope.open(Joiner.<ValidationResult>allSuccessfulOrThrow())) {
 
             // Fork merchant validation
             var merchantTask = globalScope.fork(() ->
@@ -62,26 +63,24 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
                 }
 
                 // Step 2: Parallel - Validate Balance, PIN, and Expiration
-                try (var consumerScope = StructuredTaskScope.open()) {
-                    List<Subtask<ValidationResult>> cardValidationTasks = cardValidations.stream().map(service -> consumerScope.fork(() -> service.validate(request))).toList();
+                try (var consumerScope = StructuredTaskScope.open(Joiner.<ValidationResult>allSuccessfulOrThrow())) {
+                    cardValidations.forEach(
+                            service -> consumerScope.fork(
+                                    () -> service.validate(request)
+                            )
+                    );
 
-                    consumerScope.join();
-
-                    // Check all card validation results
-                    return cardValidationTasks.stream()
-                        .map(Subtask::get)
-                        .filter(r -> !r.success())
-                        .findFirst()
-                        .orElse(SUCCESS);
-
+                    return consumerScope.join()
+                            .map(Subtask::get)
+                            .filter(r -> !r.success())
+                            .findFirst()
+                            .orElse(SUCCESS);
+                    
                 }
             });
 
             // Wait for both parallel paths to complete
-            globalScope.join();
-
-            // Check results from both paths and handle failure or transfer
-            return Stream.of(merchantTask, consumerTask)
+            return globalScope.join()
                 .map(Subtask::get)
                 .filter(r -> !r.success())
                 .findFirst()
