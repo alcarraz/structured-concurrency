@@ -49,7 +49,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
             .supplyAsync(() -> {
                 ValidationResult result = merchantValidationService.validate(request);
                 if (!result.success()) {
-                    throw new CompletionException(new RuntimeException(result.message()));
+                    throw new RuntimeException(result.message());
                 }
                 return result;
             });
@@ -60,7 +60,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 // B1: Validate card first
                 ValidationResult cardResult = cardValidationService.validate(request);
                 if (!cardResult.success()) {
-                    throw new CompletionException(new RuntimeException(cardResult.message()));
+                    throw new RuntimeException(cardResult.message());
                 }
 
                 // B2: Nested parallel validations with fail-fast coordination
@@ -72,13 +72,13 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 CompletableFuture<ValidationResult> balanceFuture = CompletableFuture
                     .supplyAsync(() -> {
                         if (hasFailed.get()) {
-                            throw new CompletionException(new RuntimeException("Cancelled due to earlier failure"));
+                            throw new RuntimeException("Cancelled due to earlier failure");
                         }
                         ValidationResult result = balanceService.validate(request);
                         if (!result.success() && hasFailed.compareAndSet(false, true)) {
                             failureReason.set(result.message());
                             futures.forEach(f -> f.cancel(true));
-                            throw new CompletionException(new RuntimeException(result.message()));
+                            throw new RuntimeException(result.message());
                         }
                         return result;
                     });
@@ -87,13 +87,13 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 CompletableFuture<ValidationResult> expirationFuture = CompletableFuture
                     .supplyAsync(() -> {
                         if (hasFailed.get()) {
-                            throw new CompletionException(new RuntimeException("Cancelled due to earlier failure"));
+                            throw new RuntimeException("Cancelled due to earlier failure");
                         }
                         ValidationResult result = expirationService.validate(request);
                         if (!result.success() && hasFailed.compareAndSet(false, true)) {
                             failureReason.set(result.message());
                             futures.forEach(f -> f.cancel(true));
-                            throw new CompletionException(new RuntimeException(result.message()));
+                            throw new RuntimeException(result.message());
                         }
                         return result;
                     });
@@ -102,13 +102,13 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 CompletableFuture<ValidationResult> pinFuture = CompletableFuture
                     .supplyAsync(() -> {
                         if (hasFailed.get()) {
-                            throw new CompletionException(new RuntimeException("Cancelled due to earlier failure"));
+                            throw new RuntimeException("Cancelled due to earlier failure");
                         }
                         ValidationResult result = pinValidationService.validate(request);
                         if (!result.success() && hasFailed.compareAndSet(false, true)) {
                             failureReason.set(result.message());
                             futures.forEach(f -> f.cancel(true));
-                            throw new CompletionException(new RuntimeException(result.message()));
+                            throw new RuntimeException(result.message());
                         }
                         return result;
                     });
@@ -121,10 +121,10 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                     return ValidationResult.success("All consumer validations passed");
                 } catch (CompletionException e) {
                     String reason = failureReason.get();
-                    if (reason == null && e.getCause() != null) {
-                        reason = e.getCause().getMessage();
+                    if (reason == null) {
+                        reason = e.getMessage();
                     }
-                    throw new CompletionException(new RuntimeException(reason != null ? reason : "Consumer validation failed"));
+                    throw new RuntimeException(reason != null ? reason : "Consumer validation failed");
                 }
             });
 
@@ -136,10 +136,10 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 ValidationResult consumerResult = consumerValidation.join();
 
                 if (!merchantResult.success()) {
-                    throw new CompletionException(new RuntimeException(merchantResult.message()));
+                    throw new RuntimeException(merchantResult.message());
                 }
                 if (!consumerResult.success()) {
-                    throw new CompletionException(new RuntimeException(consumerResult.message()));
+                    throw new RuntimeException(consumerResult.message());
                 }
 
                 // Step 3: Transfer amount if all validations passed
@@ -157,13 +157,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
             })
             .exceptionally(throwable -> {
                 long processingTime = System.currentTimeMillis() - startTime;
-                String reason = "Processing error";
-
-                if (throwable instanceof CompletionException ce && ce.getCause() != null) {
-                    reason = ce.getCause().getMessage();
-                } else if (throwable.getCause() != null) {
-                    reason = throwable.getCause().getMessage();
-                }
+                String reason = throwable.getMessage();
 
                 System.out.println("❌ FIXED REACTIVE FAIL-FAST transaction failed: " + reason +
                                  " (in " + processingTime + "ms)");

@@ -11,7 +11,6 @@ import com.example.services.PinValidationService;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 /**
  * Reactive implementation that uses exceptions (like structured concurrency does)
@@ -128,13 +127,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
                 balanceService.releaseAmount(request);
                 long processingTime = System.currentTimeMillis() - startTime;
 
-                // Extract the original validation exception
-                String failureReason = "Processing error";
-                if (throwable instanceof CompletionException ce && ce.getCause() != null) {
-                    failureReason = ce.getCause().getMessage();
-                } else if (throwable instanceof RuntimeException re) {
-                    failureReason = re.getMessage();
-                }
+                String failureReason = throwable.getMessage();
 
                 System.out.println("❌ REACTIVE WITH EXCEPTIONS transaction failed: " + failureReason +
                                  " (in " + processingTime + "ms)");
