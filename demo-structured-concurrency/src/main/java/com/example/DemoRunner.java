@@ -12,7 +12,7 @@ public class DemoRunner {
         if (args.length == 0) {
             System.out.println("╔══════════════════════════════════════════════════════════╗");
             System.out.println("║           Structured Concurrency Java 25 Demo            ║");
-            System.out.println("║              Financial Transaction Processing             ║");
+            System.out.println("║             Financial Transaction Processing             ║");
             System.out.println("╚══════════════════════════════════════════════════════════╝");
             System.out.println();
             System.out.println("Usage: DemoRunner <demo-type>");

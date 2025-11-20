@@ -8,10 +8,13 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
+import com.example.services.ValidationService;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.StructuredTaskScope.Subtask;
+import java.util.stream.Stream;
 
 /**
  * Structured Concurrency implementation with parallel merchant and consumer validation,
@@ -25,17 +28,17 @@ import java.util.concurrent.StructuredTaskScope;
 public class StructuredPaymentProcessor implements StructuredProcessor {
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
-    private final ExpirationService expirationService;
-    private final PinValidationService pinValidationService;
     private final MerchantValidationService merchantValidationService;
+    private final List<ValidationService> cardValidations;
 
     private static final ValidationResult SUCCESS = ValidationResult.success("All validations passed");
     public StructuredPaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
-        this.expirationService = new ExpirationService();
-        this.pinValidationService = new PinValidationService();
+        ExpirationService expirationService = new ExpirationService();
+        PinValidationService pinValidationService = new PinValidationService();
         this.merchantValidationService = new MerchantValidationService();
+        cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 
     @Override
@@ -60,20 +63,13 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
 
                 // Step 2: Parallel - Validate Balance, PIN, and Expiration
                 try (var consumerScope = StructuredTaskScope.open()) {
-                    var balanceTask = consumerScope.fork(() -> balanceService.validate(request));
-                    var pinTask = consumerScope.fork(() -> pinValidationService.validate(request));
-                    var expirationTask = consumerScope.fork(() -> expirationService.validate(request));
+                    List<Subtask<ValidationResult>> cardValidationTasks = cardValidations.stream().map(service -> consumerScope.fork(() -> service.validate(request))).toList();
 
                     consumerScope.join();
 
                     // Check all card validation results
-                    List<ValidationResult> cardResults = List.of(
-                        balanceTask.get(),
-                        pinTask.get(),
-                        expirationTask.get()
-                    );
-
-                    return cardResults.stream()
+                    return cardValidationTasks.stream()
+                        .map(Subtask::get)
                         .filter(r -> !r.success())
                         .findFirst()
                         .orElse(SUCCESS);
@@ -84,34 +80,27 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
             // Wait for both parallel paths to complete
             globalScope.join();
 
-            // Check results from both paths
-            ValidationResult merchantResult = merchantTask.get();
-            ValidationResult consumerResult = consumerTask.get();
-
-            if (!merchantResult.success()) {
-                balanceService.releaseAmount(request);
-                long processingTime = System.currentTimeMillis() - startTime;
-                System.out.println("❌ STRUCTURED transaction failed: " + merchantResult.message() +
-                                 " (in " + processingTime + "ms)");
-                return TransactionResult.failure(merchantResult.message(), processingTime);
-            }
-
-            if (!consumerResult.success()) {
-                balanceService.releaseAmount(request);
-                long processingTime = System.currentTimeMillis() - startTime;
-                System.out.println("❌ STRUCTURED transaction failed: " + consumerResult.message() +
-                                 " (in " + processingTime + "ms)");
-                return TransactionResult.failure(consumerResult.message(), processingTime);
-            }
+            // Check results from both paths and handle failure or transfer
+            return Stream.of(merchantTask, consumerTask)
+                .map(Subtask::get)
+                .filter(r -> !r.success())
+                .findFirst()
+                .map(result -> {
+                    balanceService.releaseAmount(request);
+                    long processingTime = System.currentTimeMillis() - startTime;
+                    System.out.println("❌ STRUCTURED transaction failed: " + result.message() +
+                                     " (in " + processingTime + "ms)");
+                    return TransactionResult.failure(result.message(), processingTime);
+                })
+                .orElseGet(() -> {
+                    // Step 3: Transfer amount if all validations passed
+                    balanceService.transfer(request);
+                    long processingTime = System.currentTimeMillis() - startTime;
+                    String transactionId = UUID.randomUUID().toString();
+                    System.out.println("✅ STRUCTURED transaction completed: " + transactionId +
+                            " (in " + processingTime + "ms)");
+                    return TransactionResult.success(transactionId, request.amount(), processingTime);
+                });
         }
-
-        // Step 3: Transfer amount if all validations passed
-        balanceService.transfer(request);
-        long processingTime = System.currentTimeMillis() - startTime;
-
-        String transactionId = UUID.randomUUID().toString();
-        System.out.println("✅ STRUCTURED transaction completed: " + transactionId +
-                " (in " + processingTime + "ms)");
-        return TransactionResult.success(transactionId, request.amount(), processingTime);
     }
 }
