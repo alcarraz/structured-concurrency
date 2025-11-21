@@ -51,11 +51,11 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
         try (var globalScope = StructuredTaskScope.open(Joiner.<ValidationResult>allSuccessfulOrThrow())) {
 
             // Fork merchant validation
-            var merchantTask = globalScope.fork(() ->
+            globalScope.fork(() ->
                 merchantValidationService.validate(request));
 
             // Fork consumer validation path (card + nested parallel validations)
-            var consumerTask = globalScope.fork(() -> {
+            globalScope.fork(() -> {
                 // First validate card
                 ValidationResult cardResult = cardValidationService.validate(request);
                 if (!cardResult.success()) {
