@@ -58,41 +58,33 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
                 CompletableFuture.allOf(validationFutures.toArray(new CompletableFuture[0])).join();
 
                 // Check nested validation results
-                List<ValidationResult> results = validationFutures.stream()
+                return validationFutures.stream()
                     .map(CompletableFuture::join)
-                    .toList();
+                    .filter(r -> !r.success())
+                    .findFirst()
+                    .orElse(ValidationResult.success("All card validations passed"));
 
-                Optional<ValidationResult> failure = results.stream()
+            });
+
+        // Group top-level validations
+        List<CompletableFuture<ValidationResult>> topLevelValidations = List.of(merchantValidation, consumerValidation);
+
+        // Wait for BOTH parallel paths (merchant + complete consumer flow)
+        return CompletableFuture.allOf(topLevelValidations.toArray(new CompletableFuture[0]))
+            .thenCompose(_ -> {
+                // Check all validation results uniformly
+                Optional<ValidationResult> failure = topLevelValidations.stream()
+                    .map(CompletableFuture::join)
                     .filter(r -> !r.success())
                     .findFirst();
 
-                return failure.orElse(ValidationResult.success("All card validations passed"));
-            });
-
-        // Wait for BOTH parallel paths (merchant + complete consumer flow)
-        return CompletableFuture.allOf(merchantValidation, consumerValidation)
-            .thenCompose(_ -> {
-                ValidationResult merchantResult = merchantValidation.join();
-                ValidationResult consumerResult = consumerValidation.join();
-
-                // Check merchant result
-                if (!merchantResult.success()) {
+                if (failure.isPresent()) {
                     balanceService.releaseAmount(request);
                     long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ REACTIVE transaction failed: " + merchantResult.message() +
+                    System.out.println("❌ REACTIVE transaction failed: " + failure.get().message() +
                                      " (in " + processingTime + "ms)");
                     return CompletableFuture.completedFuture(
-                        TransactionResult.failure(merchantResult.message(), processingTime));
-                }
-
-                // Check consumer result
-                if (!consumerResult.success()) {
-                    balanceService.releaseAmount(request);
-                    long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ REACTIVE transaction failed: " + consumerResult.message() +
-                                     " (in " + processingTime + "ms)");
-                    return CompletableFuture.completedFuture(
-                        TransactionResult.failure(consumerResult.message(), processingTime));
+                        TransactionResult.failure(failure.get().message(), processingTime));
                 }
 
                 // Step 2: Transfer amount if both paths succeeded

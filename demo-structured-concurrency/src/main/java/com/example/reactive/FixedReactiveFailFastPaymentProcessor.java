@@ -100,19 +100,20 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 }
             });
 
-        // Wait for BOTH parallel paths (merchant AND consumer)
-        return CompletableFuture.allOf(merchantValidation, consumerValidation)
-            .thenCompose(_ -> {
-                // Check results from both paths
-                ValidationResult merchantResult = merchantValidation.join();
-                ValidationResult consumerResult = consumerValidation.join();
+        // Group top-level validations
+        List<CompletableFuture<ValidationResult>> topLevelValidations = List.of(merchantValidation, consumerValidation);
 
-                if (!merchantResult.success()) {
-                    throw new RuntimeException(merchantResult.message());
-                }
-                if (!consumerResult.success()) {
-                    throw new RuntimeException(consumerResult.message());
-                }
+        // Wait for BOTH parallel paths (merchant AND consumer)
+        return CompletableFuture.allOf(topLevelValidations.toArray(new CompletableFuture[0]))
+            .thenCompose(_ -> {
+                // Check all validation results uniformly
+                topLevelValidations.stream()
+                    .map(CompletableFuture::join)
+                    .filter(r -> !r.success())
+                    .findFirst()
+                    .ifPresent(failure -> {
+                        throw new RuntimeException(failure.message());
+                    });
 
                 // Step 3: Transfer amount if all validations passed
                 System.out.println("✅ All validations passed, proceeding with transfer...");
