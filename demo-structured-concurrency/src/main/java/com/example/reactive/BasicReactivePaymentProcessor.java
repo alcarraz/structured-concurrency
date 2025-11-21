@@ -8,6 +8,7 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
+import com.example.services.ValidationService;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,16 +18,16 @@ import java.util.concurrent.CompletableFuture;
 public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
-    private final ExpirationService expirationService;
-    private final PinValidationService pinValidationService;
     private final MerchantValidationService merchantValidationService;
+    private final List<ValidationService> cardValidations;
 
     public BasicReactivePaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
-        this.expirationService = new ExpirationService();
-        this.pinValidationService = new PinValidationService();
+        ExpirationService expirationService = new ExpirationService();
+        PinValidationService pinValidationService = new PinValidationService();
         this.merchantValidationService = new MerchantValidationService();
+        this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 
     @Override
@@ -49,22 +50,17 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
                 }
 
                 // B2: Nested parallel validations (balance, PIN, expiration)
-                CompletableFuture<ValidationResult> balanceValidation =
-                    CompletableFuture.supplyAsync(() -> balanceService.validate(request));
-                CompletableFuture<ValidationResult> pinValidation =
-                    CompletableFuture.supplyAsync(() -> pinValidationService.validate(request));
-                CompletableFuture<ValidationResult> expirationValidation =
-                    CompletableFuture.supplyAsync(() -> expirationService.validate(request));
+                List<CompletableFuture<ValidationResult>> validationFutures = cardValidations.stream()
+                    .map(service -> CompletableFuture.supplyAsync(() -> service.validate(request)))
+                    .toList();
 
                 // Wait for all nested validations
-                CompletableFuture.allOf(balanceValidation, pinValidation, expirationValidation).join();
+                CompletableFuture.allOf(validationFutures.toArray(new CompletableFuture[0])).join();
 
                 // Check nested validation results
-                List<ValidationResult> results = List.of(
-                    balanceValidation.join(),
-                    pinValidation.join(),
-                    expirationValidation.join()
-                );
+                List<ValidationResult> results = validationFutures.stream()
+                    .map(CompletableFuture::join)
+                    .toList();
 
                 Optional<ValidationResult> failure = results.stream()
                     .filter(r -> !r.success())

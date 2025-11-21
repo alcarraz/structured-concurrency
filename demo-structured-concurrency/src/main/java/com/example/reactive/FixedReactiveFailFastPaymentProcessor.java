@@ -8,6 +8,7 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
+import com.example.services.ValidationService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,16 +29,16 @@ import java.util.concurrent.atomic.AtomicReference;
 public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentProcessor {
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
-    private final ExpirationService expirationService;
     private final MerchantValidationService merchantValidationService;
-    private final PinValidationService pinValidationService;
+    private final List<ValidationService> cardValidations;
 
     public FixedReactiveFailFastPaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
-        this.expirationService = new ExpirationService();
+        ExpirationService expirationService = new ExpirationService();
+        PinValidationService pinValidationService = new PinValidationService();
         this.merchantValidationService = new MerchantValidationService();
-        this.pinValidationService = new PinValidationService();
+        this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 
     @Override
@@ -68,52 +69,23 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 AtomicReference<String> failureReason = new AtomicReference<>();
                 List<CompletableFuture<ValidationResult>> futures = new ArrayList<>();
 
-                // Balance validation
-                CompletableFuture<ValidationResult> balanceFuture = CompletableFuture
-                    .supplyAsync(() -> {
-                        if (hasFailed.get()) {
-                            throw new RuntimeException("Cancelled due to earlier failure");
-                        }
-                        ValidationResult result = balanceService.validate(request);
-                        if (!result.success() && hasFailed.compareAndSet(false, true)) {
-                            failureReason.set(result.message());
-                            futures.forEach(f -> f.cancel(true));
-                            throw new RuntimeException(result.message());
-                        }
-                        return result;
-                    });
-
-                // Expiration validation
-                CompletableFuture<ValidationResult> expirationFuture = CompletableFuture
-                    .supplyAsync(() -> {
-                        if (hasFailed.get()) {
-                            throw new RuntimeException("Cancelled due to earlier failure");
-                        }
-                        ValidationResult result = expirationService.validate(request);
-                        if (!result.success() && hasFailed.compareAndSet(false, true)) {
-                            failureReason.set(result.message());
-                            futures.forEach(f -> f.cancel(true));
-                            throw new RuntimeException(result.message());
-                        }
-                        return result;
-                    });
-
-                // PIN validation
-                CompletableFuture<ValidationResult> pinFuture = CompletableFuture
-                    .supplyAsync(() -> {
-                        if (hasFailed.get()) {
-                            throw new RuntimeException("Cancelled due to earlier failure");
-                        }
-                        ValidationResult result = pinValidationService.validate(request);
-                        if (!result.success() && hasFailed.compareAndSet(false, true)) {
-                            failureReason.set(result.message());
-                            futures.forEach(f -> f.cancel(true));
-                            throw new RuntimeException(result.message());
-                        }
-                        return result;
-                    });
-
-                futures.addAll(List.of(balanceFuture, expirationFuture, pinFuture));
+                // Create validation futures for all card validations
+                for (ValidationService service : cardValidations) {
+                    CompletableFuture<ValidationResult> future = CompletableFuture
+                        .supplyAsync(() -> {
+                            if (hasFailed.get()) {
+                                throw new RuntimeException("Cancelled due to earlier failure");
+                            }
+                            ValidationResult result = service.validate(request);
+                            if (!result.success() && hasFailed.compareAndSet(false, true)) {
+                                failureReason.set(result.message());
+                                futures.forEach(f -> f.cancel(true));
+                                throw new RuntimeException(result.message());
+                            }
+                            return result;
+                        });
+                    futures.add(future);
+                }
 
                 // Wait for all parallel validations or first failure
                 try {

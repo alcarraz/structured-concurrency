@@ -8,7 +8,9 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
+import com.example.services.ValidationService;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -25,16 +27,16 @@ import java.util.concurrent.CompletableFuture;
 public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentProcessor {
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
-    private final ExpirationService expirationService;
     private final MerchantValidationService merchantValidationService;
-    private final PinValidationService pinValidationService;
+    private final List<ValidationService> cardValidations;
 
     public ReactiveWithExceptionsPaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
-        this.expirationService = new ExpirationService();
+        ExpirationService expirationService = new ExpirationService();
+        PinValidationService pinValidationService = new PinValidationService();
         this.merchantValidationService = new MerchantValidationService();
-        this.pinValidationService = new PinValidationService();
+        this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 
     @Override
@@ -61,36 +63,19 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
                 }
 
                 // B2: Nested parallel validations using SAME exception-based approach as structured concurrency
-                CompletableFuture<ValidationResult> balanceValidation = CompletableFuture
-                    .supplyAsync(() -> {
-                        ValidationResult result = balanceService.validate(request);
+                List<CompletableFuture<ValidationResult>> validationFutures = cardValidations.stream()
+                    .map(service -> CompletableFuture.supplyAsync(() -> {
+                        ValidationResult result = service.validate(request);
                         if (!result.success()) {
                             throw new RuntimeException(result.message());
                         }
                         return result;
-                    });
-
-                CompletableFuture<ValidationResult> expirationValidation = CompletableFuture
-                    .supplyAsync(() -> {
-                        ValidationResult result = expirationService.validate(request);
-                        if (!result.success()) {
-                            throw new RuntimeException(result.message());
-                        }
-                        return result;
-                    });
-
-                CompletableFuture<ValidationResult> pinValidation = CompletableFuture
-                    .supplyAsync(() -> {
-                        ValidationResult result = pinValidationService.validate(request);
-                        if (!result.success()) {
-                            throw new RuntimeException(result.message());
-                        }
-                        return result;
-                    });
+                    }))
+                    .toList();
 
                 // CompletableFuture.allOf() waits for ALL tasks to complete (or fail)
                 // This is the KEY difference from StructuredTaskScope which cancels immediately
-                CompletableFuture.allOf(balanceValidation, expirationValidation, pinValidation).join();
+                CompletableFuture.allOf(validationFutures.toArray(new CompletableFuture[0])).join();
 
                 // If we get here, all validations passed
                 return ValidationResult.success("All consumer validations passed");
