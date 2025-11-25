@@ -8,6 +8,7 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
+import com.example.services.ValidationException;
 import com.example.services.ValidationService;
 
 import java.util.List;
@@ -48,7 +49,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
             CompletableFuture.supplyAsync(() -> {
                 ValidationResult result = merchantValidationService.validate(request);
                 if (!result.success()) {
-                    throw new RuntimeException(result.message());
+                    throw new ValidationException(result);
                 }
                 return result;
             });
@@ -59,7 +60,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
                 // B1: Validate card first
                 ValidationResult cardResult = cardValidationService.validate(request);
                 if (!cardResult.success()) {
-                    throw new RuntimeException(cardResult.message());
+                    throw new ValidationException(cardResult);
                 }
 
                 // B2: Nested parallel validations using SAME exception-based approach as structured concurrency
@@ -67,7 +68,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
                     .map(service -> CompletableFuture.supplyAsync(() -> {
                         ValidationResult result = service.validate(request);
                         if (!result.success()) {
-                            throw new RuntimeException(result.message());
+                            throw new ValidationException(result);
                         }
                         return result;
                     }))
@@ -93,7 +94,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
                     .filter(r -> !r.success())
                     .findFirst()
                     .ifPresent(failure -> {
-                        throw new RuntimeException(failure.message());
+                        throw new ValidationException(failure);
                     });
 
                 // Step 3: Transfer amount if all validations passed

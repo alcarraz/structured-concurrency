@@ -8,6 +8,7 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
+import com.example.services.ValidationException;
 import com.example.services.ValidationService;
 
 import java.util.List;
@@ -53,13 +54,15 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
                 // Fork merchant validation
                 createValidationTask(merchantValidationService, request, globalScope);
 
+
                 // Fork consumer validation path (card + nested parallel validations)
                 globalScope.fork(() -> {
                     // First validate card
-                    createValidationTask(cardValidationService, request, globalScope);
+                    ValidationResult cardResult = cardValidationService.validate(request); 
+                    if (! cardResult.success()) throw new ValidationException(cardResult);
 
-                    // Step 2: Parallel - Validate Balance, PIN, and Expiration with fail-fast
                     try (var consumerScope = StructuredTaskScope.open()) {
+                        // Step 2: Parallel - Validate Balance, PIN, and Expiration with fail-fast
                         cardValidations.forEach(service -> createValidationTask(service, request, consumerScope));
 
                         consumerScope.join();
@@ -71,6 +74,8 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
                 // Wait for both parallel paths to complete
                 globalScope.join();
 
+            } catch (StructuredTaskScope.FailedException e) {
+                throw (e.getCause() instanceof RuntimeException re) ? re : e;
             }
 
             // Step 3: Transfer amount if all validations passed
@@ -89,6 +94,8 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
             System.out.println("❌ FAIL-FAST STRUCTURED transaction failed: " + failureMessage +
                              " (in " + processingTime + "ms)");
             System.out.println("   ⚡ Other validations were automatically cancelled!");
+            if (e.getCause() instanceof ValidationException ve) return TransactionResult.failure(ve.getResult().message(), processingTime);
+            e.printStackTrace();
             return TransactionResult.failure(failureMessage, processingTime);
         }
     }
@@ -97,7 +104,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
         scope.fork(() -> {
             ValidationResult result = service.validate(request);
             if (!result.success()) {
-                throw new RuntimeException(result.message());
+                throw new ValidationException(result);
             }
         });
     }
