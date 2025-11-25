@@ -7,21 +7,26 @@ Demo project comparing traditional reactive programming (CompletableFuture) with
 
 ## Build and Run Commands
 
-### Build
+### Quarkus Application (REST API)
+
 ```bash
-./gradlew build              # Full build
-./gradlew clean build        # Clean build
-./gradlew compileJava        # Compile only
+# Development mode with live reload
+./gradlew quarkusDev
+
+# Build the application
+./gradlew build
+
+# Run tests
+./gradlew test
 ```
 
-### Run Demos
-All demos use Java 25 preview features and require `--enable-preview` flag (automatically configured).
+The application will start on http://localhost:8080
+
+### Standalone Demo Tasks (Command Line)
+
+You can also run demos directly from the command line without starting the Quarkus server:
 
 ```bash
-# Main entry point with options
-./gradlew run
-
-# Specific demos via Gradle tasks
 ./gradlew demoReactive                    # CompletableFuture (basic, no fail-fast)
 ./gradlew demoReactiveExceptions          # Reactive with exceptions (still no fail-fast)
 ./gradlew demoFixedReactiveFailFast       # Manual fail-fast with CompletableFuture
@@ -30,14 +35,85 @@ All demos use Java 25 preview features and require `--enable-preview` flag (auto
 ./gradlew demoScopedValues                # Scoped Values demo
 ./gradlew demoCompare                     # Performance comparison
 ./gradlew demoCompareFailure              # Failure behavior comparison
-
-# Run specific demo class directly
-java --enable-preview -cp build/classes/java/main com.example.demos.BalanceLockingDemo
 ```
 
-### Testing
+### REST API Endpoints
+
+All endpoints accept and return JSON.
+
+#### Health Check
 ```bash
-./gradlew test               # Run all tests
+GET /api/health
+```
+
+#### Reactive Processors
+```bash
+POST /api/reactive/basic              # Basic reactive (waits for all)
+POST /api/reactive/with-exceptions    # Reactive with exception handling
+POST /api/reactive/fail-fast          # Reactive with manual fail-fast
+```
+
+#### Structured Concurrency Processors
+```bash
+POST /api/structured/normal           # Structured (waits for all)
+POST /api/structured/fail-fast        # Structured with automatic fail-fast
+```
+
+#### Comparison
+```bash
+POST /api/compare                     # Compare reactive vs structured performance
+```
+
+**Request Body Example:**
+```json
+{
+  "cardNumber": "4532-1234-5678-9012",
+  "expirationDate": "2512",
+  "pin": "1234",
+  "amount": 100.00,
+  "merchant": "Test Merchant"
+}
+```
+
+**Response Example:**
+```json
+{
+  "success": true,
+  "transactionId": "uuid-here",
+  "amount": 100.00,
+  "message": "Transaction processed successfully",
+  "processedAt": "2025-11-24T20:00:00",
+  "processingTimeMs": 245
+}
+```
+
+### Testing with curl
+
+```bash
+# Health check
+curl http://localhost:8080/api/health
+
+# Test reactive basic
+curl -X POST http://localhost:8080/api/reactive/basic \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cardNumber": "4532-1234-5678-9012",
+    "expirationDate": "2512",
+    "pin": "1234",
+    "amount": 100.00,
+    "merchant": "Test Store"
+  }'
+
+# Compare performance
+curl -X POST http://localhost:8080/api/compare \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cardNumber": "4532-1234-5678-9012",
+    "expirationDate": "2512",
+    "pin": "1234",
+    "amount": 50.00,
+    "merchant": "Comparison Test"
+  }'
 ```
 
 ## Architecture
