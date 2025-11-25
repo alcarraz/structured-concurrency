@@ -10,13 +10,10 @@ import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 import com.example.services.ValidationException;
 import com.example.services.ValidationService;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * "Fixed" reactive implementation that attempts to fail fast using CompletableFuture
@@ -65,39 +62,41 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                     throw new ValidationException(cardResult);
                 }
 
-                // B2: Nested parallel validations with fail-fast coordination
-                AtomicBoolean hasFailed = new AtomicBoolean(false);
-                AtomicReference<String> failureReason = new AtomicReference<>();
-                List<CompletableFuture<ValidationResult>> futures = new ArrayList<>();
+                // B2: Nested parallel validations with TRUE fail-fast coordination
+                // Create a future that completes as soon as we know the final outcome
+                CompletableFuture<ValidationResult> failFast = new CompletableFuture<>();
 
-                // Create validation futures for all card validations
-                for (ValidationService service : cardValidations) {
-                    CompletableFuture<ValidationResult> future = CompletableFuture
+                // Create validation futures that notify the failFast future
+                List<CompletableFuture<ValidationResult>> futures = cardValidations.stream()
+                    .map(service -> CompletableFuture
                         .supplyAsync(() -> {
-                            if (hasFailed.get()) {
-                                throw new RuntimeException("Cancelled due to earlier failure");
-                            }
                             ValidationResult result = service.validate(request);
-                            if (!result.success() && hasFailed.compareAndSet(false, true)) {
-                                failureReason.set(result.message());
-                                futures.forEach(f -> f.cancel(true));
-                                throw new ValidationException(result);
+                            // On failure, complete failFast immediately (first one wins)
+                            if (!result.success() && !failFast.isDone()) {
+                                failFast.completeExceptionally(new ValidationException(result));
                             }
                             return result;
-                        });
-                    futures.add(future);
-                }
+                        }))
+                    .toList();
 
-                // Wait for all parallel validations or first failure
+                // When all validations complete successfully, complete failFast with success
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                    .thenRun(() -> {
+                        if (!failFast.isDone()) {
+                            failFast.complete(ValidationResult.success("All consumer validations passed"));
+                        }
+                    });
+
+                // Return the failFast future - it completes as soon as we know the outcome
+                // (first failure OR all successes)
                 try {
-                    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-                    return ValidationResult.success("All consumer validations passed");
+                    return failFast.join();
                 } catch (CompletionException e) {
-                    String reason = failureReason.get();
-                    if (reason == null) {
-                        reason = e.getMessage();
+                    Throwable cause = e.getCause();
+                    if (cause instanceof ValidationException ve) {
+                        throw new RuntimeException(ve.getResult().message());
                     }
-                    throw new RuntimeException(reason != null ? reason : "Consumer validation failed");
+                    throw new RuntimeException("Consumer validation failed");
                 }
             });
 
