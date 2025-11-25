@@ -3,7 +3,8 @@ package com.example.demos;
 import com.example.model.TransactionRequest;
 import com.example.reactive.ReactivePaymentProcessor;
 import com.example.reactive.BasicReactivePaymentProcessor;
-import com.example.structured.FailFastStructuredPaymentProcessor;
+import com.example.structured.StructuredPaymentProcessor;
+import com.example.structured.StructuredProcessor;
 
 import java.math.BigDecimal;
 
@@ -35,7 +36,7 @@ public class CompareDemo {
 
         System.out.println("\n2️⃣  STRUCTURED CONCURRENCY APPROACH:");
         System.out.println("─────────────────────────────────────");
-        FailFastStructuredPaymentProcessor structuredProcessor = new FailFastStructuredPaymentProcessor();
+        StructuredProcessor structuredProcessor = new StructuredPaymentProcessor();
         long structuredStart = System.currentTimeMillis();
         structuredProcessor.processTransaction(request);
         long structuredTime = System.currentTimeMillis() - structuredStart;
