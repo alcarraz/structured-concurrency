@@ -6,6 +6,8 @@ import com.example.reactive.BasicReactivePaymentProcessor;
 import com.example.structured.StructuredPaymentProcessor;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.concurrent.ExecutionException;
 
@@ -13,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class ComparisonResource {
+    private static final Logger logger = LogManager.getLogger(ComparisonResource.class);
 
     public record ComparisonResult(
         TransactionResult reactiveResult,
@@ -24,7 +27,7 @@ public class ComparisonResource {
 
     @POST
     public ComparisonResult compare(TransactionRequest request) throws ExecutionException, InterruptedException {
-        System.out.println("⚖️  Running PERFORMANCE COMPARISON");
+        logger.info("⚖️  Running PERFORMANCE COMPARISON");
 
         // Run reactive
         BasicReactivePaymentProcessor reactiveProcessor = new BasicReactivePaymentProcessor();
@@ -40,8 +43,8 @@ public class ComparisonResource {
 
         long difference = structuredTime - reactiveTime;
 
-        System.out.printf("📊 Reactive: %dms | Structured: %dms | Difference: %+dms%n",
-            reactiveTime, structuredTime, difference);
+        logger.info(String.format("📊 Reactive: %dms | Structured: %dms | Difference: %+dms%n",
+            reactiveTime, structuredTime, difference));
 
         return new ComparisonResult(
             reactiveResult,

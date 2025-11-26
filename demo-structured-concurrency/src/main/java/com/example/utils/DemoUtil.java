@@ -1,6 +1,8 @@
 package com.example.utils;
 
 import com.example.model.TransactionResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Utility class for common demo operations.
@@ -8,6 +10,7 @@ import com.example.model.TransactionResult;
  * format transaction results, and other demo-specific functionality.
  */
 public class DemoUtil {
+    private static final Logger logger = LogManager.getLogger(DemoUtil.class);
 
     /**
      * Simulates a network delay by sleeping the current thread.
@@ -33,21 +36,21 @@ public class DemoUtil {
      * @param result The transaction result to display
      */
     public static void printResult(TransactionResult result) {
-        System.out.println("\n📋 TRANSACTION RESULT:");
-        System.out.println("══════════════════════");
+        logger.info("\n📋 TRANSACTION RESULT:");
+        logger.info("══════════════════════");
 
         if (result.success()) {
-            System.out.println("✅ Status: SUCCESS");
-            System.out.println("🆔 Transaction ID: " + result.transactionId());
-            System.out.println("💰 Amount: $" + result.amount());
+            logger.info("✅ Status: SUCCESS");
+            logger.info("🆔 Transaction ID: " + result.transactionId());
+            logger.info("💰 Amount: $" + result.amount());
         } else {
-            System.out.println("❌ Status: FAILED");
-            System.out.println("💬 Reason: " + result.message());
+            logger.info("❌ Status: FAILED");
+            logger.info("💬 Reason: " + result.message());
         }
 
-        System.out.println("⏱️  Processing Time: " + result.processingTimeMs() + "ms");
-        System.out.println("📅 Processed At: " + result.processedAt());
+        logger.info("⏱️  Processing Time: " + result.processingTimeMs() + "ms");
+        logger.info("📅 Processed At: " + result.processedAt());
 
-        System.out.println("\n" + "═".repeat(50) + "\n");
+        logger.info("\n" + "═".repeat(50) + "\n");
     }
 }

@@ -3,12 +3,15 @@ package com.example.scopedvalues;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.model.ValidationResult;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.StructuredTaskScope;
 
 public class ScopedPaymentProcessor {
+    private static final Logger logger = LogManager.getLogger(ScopedPaymentProcessor.class);
 
     // Define scoped value for the transaction request
     public static final ScopedValue<TransactionRequest> TRANSACTION_REQUEST = ScopedValue.newInstance();
@@ -36,12 +39,12 @@ public class ScopedPaymentProcessor {
                 ValidationResult cardResult = cardValidationService.validate();
                 if (!cardResult.success()) {
                     long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ SCOPED VALUES transaction failed: " + cardResult.message() +
+                    logger.info("❌ SCOPED VALUES transaction failed: " + cardResult.message() +
                                      " (in " + processingTime + "ms)");
                     return TransactionResult.failure(cardResult.message(), processingTime);
                 }
 
-                System.out.println("✅ Card validation passed, proceeding with parallel validations...");
+                logger.info("✅ Card validation passed, proceeding with parallel validations...");
 
                 // Step 2: Parallel validations with scoped context
                 try (var scope = StructuredTaskScope.open(StructuredTaskScope.Joiner.awaitAll())) {
@@ -70,18 +73,18 @@ public class ScopedPaymentProcessor {
                             .orElse("Unknown validation error");
 
                         long processingTime = System.currentTimeMillis() - startTime;
-                        System.out.println("❌ SCOPED VALUES transaction failed: " + failureReason +
+                        logger.info("❌ SCOPED VALUES transaction failed: " + failureReason +
                                          " (in " + processingTime + "ms)");
                         return TransactionResult.failure(failureReason, processingTime);
                     }
 
-                    System.out.println("✅ All validations passed, proceeding with debit...");
+                    logger.info("✅ All validations passed, proceeding with debit...");
 
                     // Step 3: Debit the amount
                     ValidationResult debitResult = balanceService.debit();
                     if (!debitResult.success()) {
                         long processingTime = System.currentTimeMillis() - startTime;
-                        System.out.println("❌ SCOPED VALUES transaction failed: " + debitResult.message() +
+                        logger.info("❌ SCOPED VALUES transaction failed: " + debitResult.message() +
                                          " (in " + processingTime + "ms)");
                         return TransactionResult.failure(debitResult.message(), processingTime);
                     }
@@ -89,14 +92,14 @@ public class ScopedPaymentProcessor {
                     // Success!
                     long processingTime = System.currentTimeMillis() - startTime;
                     String transactionId = UUID.randomUUID().toString();
-                    System.out.println("✅ SCOPED VALUES transaction completed: " + transactionId +
+                    logger.info("✅ SCOPED VALUES transaction completed: " + transactionId +
                                      " (in " + processingTime + "ms)");
                     return TransactionResult.success(transactionId, request.amount(), processingTime);
                 }
 
             } catch (Exception e) {
                 long processingTime = System.currentTimeMillis() - startTime;
-                System.out.println("💥 SCOPED VALUES transaction error: " + e.getMessage() +
+                logger.info("💥 SCOPED VALUES transaction error: " + e.getMessage() +
                                  " (in " + processingTime + "ms)");
                 return TransactionResult.failure("Processing error: " + e.getMessage(), processingTime);
             }

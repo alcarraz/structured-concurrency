@@ -3,8 +3,11 @@ package com.example.scopedvalues;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ScopedBalanceService {
+    private static final Logger logger = LogManager.getLogger(ScopedBalanceService.class);
 
     public ValidationResult validate() {
         // Access the scoped value directly - no parameter passing needed!
@@ -27,7 +30,7 @@ public class ScopedBalanceService {
 
         DemoUtil.simulateNetworkDelay(300);
 
-        System.out.println("💳 Debiting " + request.amount() + " from card ***" + cardNumber.substring(cardNumber.length() - 4));
+        logger.info("💳 Debiting " + request.amount() + " from card ***" + cardNumber.substring(cardNumber.length() - 4));
         return ValidationResult.success("Balance Debit: Amount successfully debited");
     }
 

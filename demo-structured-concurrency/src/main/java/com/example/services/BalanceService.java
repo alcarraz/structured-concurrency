@@ -3,6 +3,9 @@ package com.example.services;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
@@ -13,6 +16,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import static java.math.BigDecimal.ZERO;
 
 public class BalanceService implements ValidationService {
+    private static final Logger logger = LogManager.getLogger(BalanceService.class);
 
     // Account balances by card number
     private final ConcurrentHashMap<String, BigDecimal> balances = new ConcurrentHashMap<>();
@@ -57,7 +61,7 @@ public class BalanceService implements ValidationService {
             // Add transaction to pending set
             lockAmount(cardNumber, request);
 
-            System.out.println("🔒 Locked " + amount + " on card " + cardNumber.substring(cardNumber.length() - 4));
+            logger.info("🔒 Locked " + amount + " on card " + cardNumber.substring(cardNumber.length() - 4));
             return ValidationResult.success("Balance Check: Validation successful (locked " + amount + ")");
         } finally {
             lock.unlock();
@@ -77,7 +81,7 @@ public class BalanceService implements ValidationService {
         lock.lock();
         try {
             if (releaseAmount(cardNumber, request)) {
-                System.out.println("🔓 Unlocked " + amount + " on card " + cardNumber.substring(cardNumber.length() - 4));
+                logger.info("🔓 Unlocked " + amount + " on card " + cardNumber.substring(cardNumber.length() - 4));
             }
         } finally {
             lock.unlock();
@@ -108,7 +112,7 @@ public class BalanceService implements ValidationService {
 
             // now we should put the money in the merchant account
 
-            System.out.println("💸 Transferring " + amount + " from card " + cardNumber.substring(cardNumber.length() - 4) + " to " + merchant);
+            logger.info("💸 Transferring " + amount + " from card " + cardNumber.substring(cardNumber.length() - 4) + " to " + merchant);
         } finally {
             lock.unlock();
         }
