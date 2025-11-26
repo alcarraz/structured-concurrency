@@ -4,6 +4,8 @@ import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.scopedvalues.ScopedPaymentProcessor;
 import com.example.utils.DemoUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 
@@ -17,9 +19,11 @@ import java.math.BigDecimal;
  * Run directly from IDE using JEP 512 simplified main method.
  */
 public class ScopedValuesDemo {
+    private static final Logger logger = LogManager.getLogger(ScopedValuesDemo.class);
+
     public void main() throws Exception {
-        System.out.println("🔗 Running SCOPED VALUES Demo");
-        System.out.println("═════════════════════════════");
+        logger.info("🔗 Running SCOPED VALUES Demo");
+        logger.info("═════════════════════════════");
 
         ScopedPaymentProcessor processor = new ScopedPaymentProcessor();
 

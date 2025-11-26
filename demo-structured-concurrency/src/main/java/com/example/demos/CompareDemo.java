@@ -5,6 +5,8 @@ import com.example.reactive.ReactivePaymentProcessor;
 import com.example.reactive.BasicReactivePaymentProcessor;
 import com.example.structured.StructuredPaymentProcessor;
 import com.example.structured.StructuredProcessor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 
@@ -18,33 +20,35 @@ import java.math.BigDecimal;
  * Run directly from IDE using JEP 512 simplified main method.
  */
 public class CompareDemo {
+    private static final Logger logger = LogManager.getLogger(CompareDemo.class);
+
     public void main() throws Exception {
-        System.out.println("⚖️  Running PERFORMANCE COMPARISON Demo");
-        System.out.println("════════════════════════════════════════");
+        logger.info("⚖️  Running PERFORMANCE COMPARISON Demo");
+        logger.info("════════════════════════════════════════");
 
         TransactionRequest request = new TransactionRequest(
                 "4532-1234-5678-9012", "2512", "1234",  // December 2025 (valid)
             new BigDecimal("100.00"), "Comparison Test"
         );
 
-        System.out.println("\n1️⃣  REACTIVE APPROACH:");
-        System.out.println("─────────────────────");
+        logger.info("\n1️⃣  REACTIVE APPROACH:");
+        logger.info("─────────────────────");
         ReactivePaymentProcessor reactiveProcessor = new BasicReactivePaymentProcessor();
         long reactiveStart = System.currentTimeMillis();
         reactiveProcessor.processTransaction(request).get();
         long reactiveTime = System.currentTimeMillis() - reactiveStart;
 
-        System.out.println("\n2️⃣  STRUCTURED CONCURRENCY APPROACH:");
-        System.out.println("─────────────────────────────────────");
+        logger.info("\n2️⃣  STRUCTURED CONCURRENCY APPROACH:");
+        logger.info("─────────────────────────────────────");
         StructuredProcessor structuredProcessor = new StructuredPaymentProcessor();
         long structuredStart = System.currentTimeMillis();
         structuredProcessor.processTransaction(request);
         long structuredTime = System.currentTimeMillis() - structuredStart;
 
-        System.out.println("\n📊 COMPARISON RESULTS:");
-        System.out.println("═════════════════════");
-        System.out.printf("Reactive Processing Time:   %d ms%n", reactiveTime);
-        System.out.printf("Structured Processing Time: %d ms%n", structuredTime);
-        System.out.printf("Performance Difference:     %+d ms%n", structuredTime - reactiveTime);
+        logger.info("\n📊 COMPARISON RESULTS:");
+        logger.info("═════════════════════");
+        logger.info(String.format("Reactive Processing Time:   %d ms%n", reactiveTime));
+        logger.info(String.format("Structured Processing Time: %d ms%n", structuredTime));
+        logger.info(String.format("Performance Difference:     %+d ms%n", structuredTime - reactiveTime));
     }
 }

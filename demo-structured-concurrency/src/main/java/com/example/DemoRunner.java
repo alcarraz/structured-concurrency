@@ -6,32 +6,36 @@ import com.example.demos.CompareFailureDemo;
 import com.example.demos.ReactiveDemo;
 import com.example.demos.ScopedValuesDemo;
 import com.example.demos.StructuredDemo;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class DemoRunner {
+    private static final Logger logger = LogManager.getLogger(DemoRunner.class);
+
     void main(String[] args) {
         if (args.length == 0) {
-            System.out.println("╔══════════════════════════════════════════════════════════╗");
-            System.out.println("║           Structured Concurrency Java 25 Demo            ║");
-            System.out.println("║             Financial Transaction Processing             ║");
-            System.out.println("╚══════════════════════════════════════════════════════════╝");
-            System.out.println();
-            System.out.println("Usage: DemoRunner <demo-type>");
-            System.out.println();
-            System.out.println("Available demos:");
-            System.out.println("  reactive              - CompletableFuture approach (complex, nested)");
-            System.out.println("  reactive-exceptions   - Reactive with exceptions (still no fail-fast!)");
-            System.out.println("  fixed-reactive-failfast- 'Fixed' reactive with manual fail-fast (still complex)");
-            System.out.println("  structured            - Structured Concurrency (fail-fast by default)");
-            System.out.println("  structured-normal     - Structured Concurrency (await all validations)");
-            System.out.println("  scoped-values         - Scoped Values demo (context propagation)");
-            System.out.println("  compare               - Side-by-side performance comparison");
-            System.out.println("  compare-failure       - Early failure behavior comparison");
-            System.out.println("  balance-locking       - Balance lock/unlock behavior demo");
-            System.out.println();
-            System.out.println("Example scenarios:");
-            System.out.println("  • Valid transaction:   Customer 12345, Card 4532-1234-5678-9012, PIN 1234");
-            System.out.println("  • Expired card:        Customer 12345, Card 5555-4444-3333-2222, PIN 9876");
-            System.out.println("  • Insufficient funds:  Customer 67890, Card 4532-1234-5678-9012, PIN 1234");
+            logger.info("╔══════════════════════════════════════════════════════════╗");
+            logger.info("║           Structured Concurrency Java 25 Demo            ║");
+            logger.info("║             Financial Transaction Processing             ║");
+            logger.info("╚══════════════════════════════════════════════════════════╝");
+            logger.info("");
+            logger.info("Usage: DemoRunner <demo-type>");
+            logger.info("");
+            logger.info("Available demos:");
+            logger.info("  reactive              - CompletableFuture approach (complex, nested)");
+            logger.info("  reactive-exceptions   - Reactive with exceptions (still no fail-fast!)");
+            logger.info("  fixed-reactive-failfast- 'Fixed' reactive with manual fail-fast (still complex)");
+            logger.info("  structured            - Structured Concurrency (fail-fast by default)");
+            logger.info("  structured-normal     - Structured Concurrency (await all validations)");
+            logger.info("  scoped-values         - Scoped Values demo (context propagation)");
+            logger.info("  compare               - Side-by-side performance comparison");
+            logger.info("  compare-failure       - Early failure behavior comparison");
+            logger.info("  balance-locking       - Balance lock/unlock behavior demo");
+            logger.info("");
+            logger.info("Example scenarios:");
+            logger.info("  • Valid transaction:   Customer 12345, Card 4532-1234-5678-9012, PIN 1234");
+            logger.info("  • Expired card:        Customer 12345, Card 5555-4444-3333-2222, PIN 9876");
+            logger.info("  • Insufficient funds:  Customer 67890, Card 4532-1234-5678-9012, PIN 1234");
             return;
         }
 
@@ -49,13 +53,12 @@ public class DemoRunner {
                 case "compare-failure" -> new CompareFailureDemo().main();
                 case "balance-locking" -> new BalanceLockingDemo().main();
                 default -> {
-                    System.out.println("❌ Unknown demo type: " + demoType);
-                    System.out.println("Run without arguments to see available options.");
+                    logger.info("❌ Unknown demo type: " + demoType);
+                    logger.info("Run without arguments to see available options.");
                 }
             }
         } catch (Exception e) {
-            System.err.println("💥 Demo failed: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("💥 Demo failed: " + e.getMessage(), e);
         }
     }
 }

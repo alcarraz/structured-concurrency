@@ -4,6 +4,8 @@ import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.structured.StructuredPaymentProcessor;
 import com.example.structured.FailFastStructuredPaymentProcessor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 
@@ -14,17 +16,19 @@ import java.math.BigDecimal;
  * and automatically unlocks them if the transaction fails.
  */
 public class BalanceLockingDemo {
+    private static final Logger logger = LogManager.getLogger(BalanceLockingDemo.class);
+
     public void main() {
-        System.out.println("🔐 Running BALANCE LOCKING/UNLOCKING Demo");
-        System.out.println("════════════════════════════════════════");
-        System.out.println();
+        logger.info("🔐 Running BALANCE LOCKING/UNLOCKING Demo");
+        logger.info("════════════════════════════════════════");
+        logger.info("");
 
         // Test 1: Successful transaction - lock then transfer
-        System.out.println("📝 Test 1: SUCCESSFUL TRANSACTION");
-        System.out.println("   Card: 1234-5678-9012-3456 (Balance: 5000)");
-        System.out.println("   Amount: 100");
-        System.out.println("   Merchant: TestMerchant");
-        System.out.println();
+        logger.info("📝 Test 1: SUCCESSFUL TRANSACTION");
+        logger.info("   Card: 1234-5678-9012-3456 (Balance: 5000)");
+        logger.info("   Amount: 100");
+        logger.info("   Merchant: TestMerchant");
+        logger.info("");
 
         TransactionRequest successRequest = new TransactionRequest(
             "1234-5678-9012-3456", "2512", "1234",
@@ -34,25 +38,25 @@ public class BalanceLockingDemo {
         StructuredPaymentProcessor processor = new StructuredPaymentProcessor();
         try {
             TransactionResult result = processor.processTransaction(successRequest);
-            System.out.println();
-            System.out.println("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
+            logger.info("");
+            logger.info("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
             if (!result.success()) {
-                System.out.println("   Reason: " + result.message());
+                logger.info("   Reason: " + result.message());
             }
         } catch (Exception e) {
-            System.out.println("❌ Error: " + e.getMessage());
+            logger.info("❌ Error: " + e.getMessage());
         }
 
-        System.out.println();
-        System.out.println("═══════════════════════════════════════");
-        System.out.println();
+        logger.info("");
+        logger.info("═══════════════════════════════════════");
+        logger.info("");
 
         // Test 2: Failed transaction - lock then unlock
-        System.out.println("📝 Test 2: FAILED TRANSACTION (Blocked Merchant)");
-        System.out.println("   Card: 1234-5678-9012-3456 (Balance: ~4900 after test 1)");
-        System.out.println("   Amount: 200");
-        System.out.println("   Merchant: BLOCKED_Merchant (will fail validation)");
-        System.out.println();
+        logger.info("📝 Test 2: FAILED TRANSACTION (Blocked Merchant)");
+        logger.info("   Card: 1234-5678-9012-3456 (Balance: ~4900 after test 1)");
+        logger.info("   Amount: 200");
+        logger.info("   Merchant: BLOCKED_Merchant (will fail validation)");
+        logger.info("");
 
         TransactionRequest failedRequest = new TransactionRequest(
             "1234-5678-9012-3456", "2512", "1234",
@@ -62,25 +66,25 @@ public class BalanceLockingDemo {
         StructuredPaymentProcessor processor2 = new StructuredPaymentProcessor();
         try {
             TransactionResult result = processor2.processTransaction(failedRequest);
-            System.out.println();
-            System.out.println("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
+            logger.info("");
+            logger.info("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
             if (!result.success()) {
-                System.out.println("   Reason: " + result.message());
+                logger.info("   Reason: " + result.message());
             }
         } catch (Exception e) {
-            System.out.println("❌ Error: " + e.getMessage());
+            logger.info("❌ Error: " + e.getMessage());
         }
 
-        System.out.println();
-        System.out.println("═══════════════════════════════════════");
-        System.out.println();
+        logger.info("");
+        logger.info("═══════════════════════════════════════");
+        logger.info("");
 
         // Test 3: Fail-fast with balance lock/unlock
-        System.out.println("📝 Test 3: FAIL-FAST (PIN failure)");
-        System.out.println("   Card: 9876-5432-1098-7654 (Balance: 500)");
-        System.out.println("   Amount: 50");
-        System.out.println("   PIN: 0000 (invalid - will fail)");
-        System.out.println();
+        logger.info("📝 Test 3: FAIL-FAST (PIN failure)");
+        logger.info("   Card: 9876-5432-1098-7654 (Balance: 500)");
+        logger.info("   Amount: 50");
+        logger.info("   PIN: 0000 (invalid - will fail)");
+        logger.info("");
 
         TransactionRequest failFastRequest = new TransactionRequest(
             "9876-5432-1098-7654", "2512", "0000",
@@ -90,21 +94,21 @@ public class BalanceLockingDemo {
         FailFastStructuredPaymentProcessor failFastProcessor = new FailFastStructuredPaymentProcessor();
         try {
             TransactionResult result = failFastProcessor.processTransaction(failFastRequest);
-            System.out.println();
-            System.out.println("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
+            logger.info("");
+            logger.info("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
             if (!result.success()) {
-                System.out.println("   Reason: " + result.message());
+                logger.info("   Reason: " + result.message());
             }
         } catch (Exception e) {
-            System.out.println("❌ Error: " + e.getMessage());
+            logger.info("❌ Error: " + e.getMessage());
         }
 
-        System.out.println();
-        System.out.println("🎯 DEMO COMPLETE");
-        System.out.println();
-        System.out.println("Key observations:");
-        System.out.println("• Test 1: Balance locked (🔒) → Transfer successful (💸)");
-        System.out.println("• Test 2: Balance locked (🔒) → Merchant failed → Balance unlocked (🔓)");
-        System.out.println("• Test 3: Balance locked (🔒) → PIN failed → Balance unlocked (🔓) + tasks cancelled");
+        logger.info("");
+        logger.info("🎯 DEMO COMPLETE");
+        logger.info("");
+        logger.info("Key observations:");
+        logger.info("• Test 1: Balance locked (🔒) → Transfer successful (💸)");
+        logger.info("• Test 2: Balance locked (🔒) → Merchant failed → Balance unlocked (🔓)");
+        logger.info("• Test 3: Balance locked (🔒) → PIN failed → Balance unlocked (🔓) + tasks cancelled");
     }
 }
