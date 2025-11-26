@@ -10,6 +10,9 @@ import com.example.utils.DemoUtil;
 
 import java.math.BigDecimal;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Unified Reactive Programming Demo
  * <p>
@@ -19,6 +22,7 @@ import java.math.BigDecimal;
  * Run directly from IDE using JEP 512 simplified main method.
  */
 public class ReactiveDemo {
+    private static final Logger logger = LogManager.getLogger(ReactiveDemo.class);
 
     enum Type {
         BASIC("Basic Reactive (CompletableFuture)"),
@@ -36,8 +40,8 @@ public class ReactiveDemo {
 
         ReactivePaymentProcessor processor = createProcessor(processorType);
 
-        System.out.println("🔄 Running REACTIVE Demo - " + processorType.description);
-        System.out.println("═══════════════════════════════════════════");
+        logger.info("🔄 Running REACTIVE Demo - {}", processorType.description);
+        logger.info("═══════════════════════════════════════════");
         
         //Simulate failure when trying to demo fail fast behavior.
         String expDate = (processorType == Type.BASIC) ? "2512" : "2312";

@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.StructuredTaskScope;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Fail-fast Structured Concurrency implementation with parallel merchant and consumer validation,
  * followed by nested parallel card validations.
@@ -28,6 +31,8 @@ import java.util.concurrent.StructuredTaskScope;
  * capabilities - when any validation fails, remaining tasks are automatically cancelled.
  */
 public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
+    private static final Logger logger = LogManager.getLogger(FailFastStructuredPaymentProcessor.class);
+
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
@@ -45,7 +50,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
     @Override
     public TransactionResult processTransaction(TransactionRequest request) throws InterruptedException {
         long startTime = System.currentTimeMillis();
-        System.out.println("🚀 Starting FAIL-FAST STRUCTURED transaction processing for merchant " + request.merchant());
+        logger.info("🚀 Starting FAIL-FAST STRUCTURED transaction processing for merchant {}", request.merchant());
 
         try {
             // Step 1: Parallel - Validate Merchant AND Consumer (Card) with fail-fast
@@ -83,17 +88,17 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
             long processingTime = System.currentTimeMillis() - startTime;
 
             String transactionId = UUID.randomUUID().toString();
-            System.out.println("✅ FAIL-FAST STRUCTURED transaction completed: " + transactionId +
-                    " (in " + processingTime + "ms)");
+            logger.info("✅ FAIL-FAST STRUCTURED transaction completed: {} (in {}ms)",
+                       transactionId, processingTime);
             return TransactionResult.success(transactionId, request.amount(), processingTime);
 
         } catch (StructuredTaskScope.FailedException e) {
             balanceService.releaseAmount(request);
             long processingTime = System.currentTimeMillis() - startTime;
             String failureMessage = e.getCause().getMessage();
-            System.out.println("❌ FAIL-FAST STRUCTURED transaction failed: " + failureMessage +
-                             " (in " + processingTime + "ms)");
-            System.out.println("   ⚡ Other validations were automatically cancelled!");
+            logger.info("❌ FAIL-FAST STRUCTURED transaction failed: {} (in {}ms)",
+                       failureMessage, processingTime);
+            logger.debug("   ⚡ Other validations were automatically cancelled!");
             if (e.getCause() instanceof ValidationException ve) return TransactionResult.failure(ve.getResult().message(), processingTime);
             e.printStackTrace();
             return TransactionResult.failure(failureMessage, processingTime);

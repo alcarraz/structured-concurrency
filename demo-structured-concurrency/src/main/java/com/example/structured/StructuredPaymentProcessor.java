@@ -17,6 +17,9 @@ import java.util.concurrent.StructuredTaskScope.Joiner;
 import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.stream.Stream;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Structured Concurrency implementation with parallel merchant and consumer validation,
  * followed by nested parallel card validations.
@@ -27,12 +30,13 @@ import java.util.stream.Stream;
  * 3. Transfer (if all OK)
  */
 public class StructuredPaymentProcessor implements StructuredProcessor {
+    private static final Logger logger = LogManager.getLogger(StructuredPaymentProcessor.class);
+    private static final ValidationResult SUCCESS = ValidationResult.success("All validations passed");
+
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
     private final List<ValidationService> cardValidations;
-
-    private static final ValidationResult SUCCESS = ValidationResult.success("All validations passed");
     public StructuredPaymentProcessor() {
         this.balanceService = new BalanceService();
         this.cardValidationService = new CardValidationService();
@@ -45,7 +49,7 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
     @Override
     public TransactionResult processTransaction(TransactionRequest request) throws InterruptedException {
         long startTime = System.currentTimeMillis();
-        System.out.println("🚀 Starting STRUCTURED transaction processing for merchant " + request.merchant());
+        logger.info("🚀 Starting STRUCTURED transaction processing for merchant {}", request.merchant());
 
         // Step 1: Parallel - Validate Merchant AND Consumer (Card)
         try (var globalScope = StructuredTaskScope.open(Joiner.<ValidationResult>allSuccessfulOrThrow())) {
@@ -87,8 +91,8 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
                 .map(result -> {
                     balanceService.releaseAmount(request);
                     long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ STRUCTURED transaction failed: " + result.message() +
-                                     " (in " + processingTime + "ms)");
+                    logger.info("❌ STRUCTURED transaction failed: {} (in {}ms)",
+                               result.message(), processingTime);
                     return TransactionResult.failure(result.message(), processingTime);
                 })
                 .orElseGet(() -> {
@@ -96,8 +100,8 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
                     balanceService.transfer(request);
                     long processingTime = System.currentTimeMillis() - startTime;
                     String transactionId = UUID.randomUUID().toString();
-                    System.out.println("✅ STRUCTURED transaction completed: " + transactionId +
-                            " (in " + processingTime + "ms)");
+                    logger.info("✅ STRUCTURED transaction completed: {} (in {}ms)",
+                               transactionId, processingTime);
                     return TransactionResult.success(transactionId, request.amount(), processingTime);
                 });
         }

@@ -9,6 +9,9 @@ import com.example.utils.DemoUtil;
 
 import java.math.BigDecimal;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Unified Structured Concurrency Demo
  * <p>
@@ -18,6 +21,7 @@ import java.math.BigDecimal;
  * Run directly from IDE using JEP 512 simplified main method.
  */
 public class StructuredDemo {
+    private static final Logger logger = LogManager.getLogger(StructuredDemo.class);
 
     enum Type {
         NORMAL("Normal Structured Concurrency (Await All)"), FAIL_FAST("Fail-Fast Structured Concurrency");
@@ -31,8 +35,8 @@ public class StructuredDemo {
 
         StructuredProcessor processor = createProcessor(processorType);
 
-        System.out.println("🚀 Running STRUCTURED CONCURRENCY Demo - " + processorType.description);
-        System.out.println("═════════════════════════════════════════════════════════");
+        logger.info("🚀 Running STRUCTURED CONCURRENCY Demo - {}", processorType.description);
+        logger.info("═════════════════════════════════════════════════════════");
 
         // Use expired card for fail-fast demo, valid card for normal demo
         TransactionRequest request = createTestRequest(processorType);

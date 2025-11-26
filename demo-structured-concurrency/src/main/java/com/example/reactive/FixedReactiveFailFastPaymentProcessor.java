@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * "Fixed" reactive implementation that attempts to fail fast using CompletableFuture
@@ -25,6 +27,8 @@ import java.util.concurrent.CompletionException;
  * careful exception handling that is prone to race conditions.
  */
 public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentProcessor {
+    private static final Logger logger = LogManager.getLogger(FixedReactiveFailFastPaymentProcessor.class);
+
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
@@ -116,15 +120,15 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                     });
 
                 // Step 3: Transfer amount if all validations passed
-                System.out.println("✅ All validations passed, proceeding with transfer...");
+                logger.debug("✅ All validations passed, proceeding with transfer...");
                 return CompletableFuture.runAsync(() -> balanceService.transfer(request));
             })
             .thenApply(_ -> {
                 long processingTime = System.currentTimeMillis() - startTime;
                 String transactionId = UUID.randomUUID().toString();
 
-                System.out.println("✅ FIXED REACTIVE FAIL-FAST transaction completed: " + transactionId +
-                                 " (in " + processingTime + "ms)");
+                logger.info("✅ FIXED REACTIVE FAIL-FAST transaction completed: {} (in {}ms)",
+                           transactionId, processingTime);
 
                 return TransactionResult.success(transactionId, request.amount(), processingTime);
             })
@@ -132,9 +136,9 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 long processingTime = System.currentTimeMillis() - startTime;
                 String reason = throwable.getMessage();
 
-                System.out.println("❌ FIXED REACTIVE FAIL-FAST transaction failed: " + reason +
-                                 " (in " + processingTime + "ms)");
-                System.out.println("   ⚡ Attempted to cancel remaining validations");
+                logger.info("❌ FIXED REACTIVE FAIL-FAST transaction failed: {} (in {}ms)",
+                           reason, processingTime);
+                logger.debug("   ⚡ Attempted to cancel remaining validations");
 
                 return TransactionResult.failure(reason, processingTime);
             });

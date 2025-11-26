@@ -15,7 +15,12 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
+    private static final Logger logger = LogManager.getLogger(BasicReactivePaymentProcessor.class);
+
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
@@ -81,8 +86,8 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
                 if (failure.isPresent()) {
                     balanceService.releaseAmount(request);
                     long processingTime = System.currentTimeMillis() - startTime;
-                    System.out.println("❌ REACTIVE transaction failed: " + failure.get().message() +
-                                     " (in " + processingTime + "ms)");
+                    logger.info("❌ REACTIVE transaction failed: {} (in {}ms)",
+                               failure.get().message(), processingTime);
                     return CompletableFuture.completedFuture(
                         TransactionResult.failure(failure.get().message(), processingTime));
                 }
@@ -94,15 +99,15 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
                         long processingTime = System.currentTimeMillis() - startTime;
 
                         String transactionId = UUID.randomUUID().toString();
-                        System.out.println("✅ REACTIVE transaction completed: " + transactionId +
-                                         " (in " + processingTime + "ms)");
+                        logger.info("✅ REACTIVE transaction completed: {} (in {}ms)",
+                                   transactionId, processingTime);
                         return TransactionResult.success(transactionId, request.amount(), processingTime);
                     });
             })
             .exceptionally(throwable -> {
                 long processingTime = System.currentTimeMillis() - startTime;
-                System.out.println("💥 REACTIVE transaction error: " + throwable.getMessage() +
-                                 " (in " + processingTime + "ms)");
+                logger.info("💥 REACTIVE transaction error: {} (in {}ms)",
+                           throwable.getMessage(), processingTime);
                 return TransactionResult.failure("Processing error: " + throwable.getMessage(), processingTime);
             });
     }

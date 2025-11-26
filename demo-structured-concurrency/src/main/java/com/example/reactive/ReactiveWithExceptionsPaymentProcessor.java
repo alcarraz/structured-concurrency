@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Reactive implementation that uses exceptions (like structured concurrency does)
  * but still DOES NOT fail fast naturally. This demonstrates that the problem
@@ -26,6 +29,8 @@ import java.util.concurrent.CompletableFuture;
  * This is the key difference from StructuredTaskScope which cancels immediately.
  */
 public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentProcessor {
+    private static final Logger logger = LogManager.getLogger(ReactiveWithExceptionsPaymentProcessor.class);
+
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
@@ -98,15 +103,15 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
                     });
 
                 // Step 3: Transfer amount if all validations passed
-                System.out.println("✅ All validations passed, proceeding with transfer...");
+                logger.debug("✅ All validations passed, proceeding with transfer...");
                 return CompletableFuture.runAsync(() -> balanceService.transfer(request));
             })
             .thenApply(_ -> {
                 long processingTime = System.currentTimeMillis() - startTime;
                 String transactionId = UUID.randomUUID().toString();
 
-                System.out.println("✅ REACTIVE WITH EXCEPTIONS transaction completed: " + transactionId +
-                                 " (in " + processingTime + "ms)");
+                logger.info("✅ REACTIVE WITH EXCEPTIONS transaction completed: {} (in {}ms)",
+                           transactionId, processingTime);
 
                 return TransactionResult.success(transactionId, request.amount(), processingTime);
             })
@@ -116,9 +121,9 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
 
                 String failureReason = throwable.getMessage();
 
-                System.out.println("❌ REACTIVE WITH EXCEPTIONS transaction failed: " + failureReason +
-                                 " (in " + processingTime + "ms)");
-                System.out.println("   ⚠️  All other validations still completed - no automatic cancellation");
+                logger.info("❌ REACTIVE WITH EXCEPTIONS transaction failed: {} (in {}ms)",
+                           failureReason, processingTime);
+                logger.debug("   ⚠️  All other validations still completed - no automatic cancellation");
 
                 return TransactionResult.failure(failureReason, processingTime);
             });
