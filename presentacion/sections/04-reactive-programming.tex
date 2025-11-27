@@ -4,19 +4,22 @@
     \frametitle{Código de Ejemplo}
     \begin{minted}[fontsize=\footnotesize]{java}
 public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
-    return CompletableFuture
-        .supplyAsync(() -> cardValidationService.validate(request.cardNumber()))
-        .thenCompose(cardResult -> {
-            if (!cardResult.success())
-                return CompletableFuture.completedFuture(TransactionResult.failure(xxx));
+    CompletableFuture<ValidationResult> merchantValidation =
+        CompletableFuture.supplyAsync(() -> merchantValidationService.validate(request));
+    CompletableFuture<ValidationResult> consumerValidation =
+        CompletableFuture.supplyAsync(() -> {
+            ValidationResult cardResult = cardValidationService.validate(request);
+            if (!cardResult.success()) return cardResult;
 
-            var balanceValidation = CompletableFuture.supplyAsync(() ->
-                balanceService.validate(request.cardNumber(), request.amount()));
-            // ... más validaciones paralelas
-
-            return CompletableFuture.allOf(balanceValidation, pinValidation, xxx)
-                .thenCompose(_ -> CompletableFuture.supplyAsync(() ->
-                        balanceService.debit(request.cardNumber(), request.amount())));
+            var validations = cardValidations.stream()
+                .map(s -> CompletableFuture.supplyAsync(() -> s.validate(request)))
+                .toList();
+            CompletableFuture.allOf(validations.toArray(new CompletableFuture[0])).join();
+        });
+    return CompletableFuture.allOf(merchantValidation, consumerValidation)
+        .thenCompose(_ -> {
+            return CompletableFuture.runAsync(() -> balanceService.transfer(request))
+                .thenApply(_ -> TransactionResult.success(...));
         });
 }
     \end{minted}
@@ -60,7 +63,6 @@ curl -X POST http://localhost:8080/api/reactive/basic \
         \end{minted}
     \end{block}
 
-    \vspace{1em}
 
     \begin{exampleblock}{Respuesta esperada}
         \begin{minted}[fontsize=\tiny]{json}
@@ -74,9 +76,9 @@ curl -X POST http://localhost:8080/api/reactive/basic \
         \end{minted}
     \end{exampleblock}
 
-    \vspace{0.5em}
     \begin{alertblock}{Observa}
-        Funciona... pero el código es complejo. ¿Hay una mejor forma?
+        Funciona... pero el código es complejo.
+        ¿Hay una mejor forma?
     \end{alertblock}
 \end{frame}
 
