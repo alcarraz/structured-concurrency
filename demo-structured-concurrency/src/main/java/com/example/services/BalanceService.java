@@ -3,11 +3,14 @@ package com.example.services;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -15,6 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static java.math.BigDecimal.ZERO;
 
+@ApplicationScoped
 public class BalanceService implements ValidationService {
     private static final Logger logger = LogManager.getLogger(BalanceService.class);
 
@@ -144,5 +148,32 @@ public class BalanceService implements ValidationService {
      */
     private void lockAmount(String cardNumber, TransactionRequest request) {
         getPendingTransactions(cardNumber).add(request);
+    }
+
+    /**
+     * Returns all card balances (for Web UI).
+     */
+    public Map<String, BigDecimal> getAllBalances() {
+        return new HashMap<>(balances);
+    }
+
+    /**
+     * Returns balance for specific card (for Web UI).
+     */
+    public BigDecimal getBalance(String cardNumber) {
+        return balances.getOrDefault(cardNumber, ZERO);
+    }
+
+    /**
+     * Sets balance for specific card (for Web UI demo purposes).
+     */
+    public void setBalance(String cardNumber, BigDecimal newBalance) {
+        Lock lock = getLock(cardNumber);
+        lock.lock();
+        try {
+            balances.put(cardNumber, newBalance);
+        } finally {
+            lock.unlock();
+        }
     }
 }
