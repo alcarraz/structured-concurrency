@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,6 +28,7 @@ import org.apache.logging.log4j.Logger;
  * built-in fail-fast behavior, requiring manual cancellation logic and
  * careful exception handling that is prone to race conditions.
  */
+@ApplicationScoped
 public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentProcessor {
     private static final Logger logger = LogManager.getLogger(FixedReactiveFailFastPaymentProcessor.class);
 
@@ -35,11 +38,18 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
     private final List<ValidationService> cardValidations;
 
     public FixedReactiveFailFastPaymentProcessor() {
-        this.balanceService = new BalanceService();
-        this.cardValidationService = new CardValidationService();
-        ExpirationService expirationService = new ExpirationService();
-        PinValidationService pinValidationService = new PinValidationService();
-        this.merchantValidationService = new MerchantValidationService();
+        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
+    }
+    @Inject
+    public FixedReactiveFailFastPaymentProcessor(
+            BalanceService balanceService,
+            CardValidationService cardValidationService,
+            ExpirationService expirationService,
+            PinValidationService pinValidationService,
+            MerchantValidationService merchantValidationService) {
+        this.balanceService = balanceService;
+        this.cardValidationService = cardValidationService;
+        this.merchantValidationService = merchantValidationService;
         this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 

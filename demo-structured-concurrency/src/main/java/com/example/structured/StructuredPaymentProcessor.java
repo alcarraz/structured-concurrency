@@ -17,6 +17,8 @@ import java.util.concurrent.StructuredTaskScope.Joiner;
 import java.util.concurrent.StructuredTaskScope.Subtask;
 import java.util.stream.Stream;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,6 +31,7 @@ import org.apache.logging.log4j.Logger;
  * 2. Parallel (if card OK): Validate Balance, PIN, Expiration
  * 3. Transfer (if all OK)
  */
+@ApplicationScoped
 public class StructuredPaymentProcessor implements StructuredProcessor {
     private static final Logger logger = LogManager.getLogger(StructuredPaymentProcessor.class);
     private static final ValidationResult SUCCESS = ValidationResult.success("All validations passed");
@@ -37,13 +40,22 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
     private final List<ValidationService> cardValidations;
+
     public StructuredPaymentProcessor() {
-        this.balanceService = new BalanceService();
-        this.cardValidationService = new CardValidationService();
-        ExpirationService expirationService = new ExpirationService();
-        PinValidationService pinValidationService = new PinValidationService();
-        this.merchantValidationService = new MerchantValidationService();
-        cardValidations = List.of(expirationService, pinValidationService, balanceService);
+        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
+    }
+
+    @Inject
+    public StructuredPaymentProcessor(
+            BalanceService balanceService,
+            CardValidationService cardValidationService,
+            ExpirationService expirationService,
+            PinValidationService pinValidationService,
+            MerchantValidationService merchantValidationService) {
+        this.balanceService = balanceService;
+        this.cardValidationService = cardValidationService;
+        this.merchantValidationService = merchantValidationService;
+        this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 
     @Override

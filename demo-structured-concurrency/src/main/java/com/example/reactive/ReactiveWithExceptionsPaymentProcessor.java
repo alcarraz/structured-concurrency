@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -28,6 +30,7 @@ import org.apache.logging.log4j.Logger;
  * CompletableFuture waits for ALL tasks to complete before processing results.
  * This is the key difference from StructuredTaskScope which cancels immediately.
  */
+@ApplicationScoped
 public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentProcessor {
     private static final Logger logger = LogManager.getLogger(ReactiveWithExceptionsPaymentProcessor.class);
 
@@ -37,11 +40,18 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
     private final List<ValidationService> cardValidations;
 
     public ReactiveWithExceptionsPaymentProcessor() {
-        this.balanceService = new BalanceService();
-        this.cardValidationService = new CardValidationService();
-        ExpirationService expirationService = new ExpirationService();
-        PinValidationService pinValidationService = new PinValidationService();
-        this.merchantValidationService = new MerchantValidationService();
+        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
+    }
+    @Inject
+    public ReactiveWithExceptionsPaymentProcessor(
+            BalanceService balanceService,
+            CardValidationService cardValidationService,
+            ExpirationService expirationService,
+            PinValidationService pinValidationService,
+            MerchantValidationService merchantValidationService) {
+        this.balanceService = balanceService;
+        this.cardValidationService = cardValidationService;
+        this.merchantValidationService = merchantValidationService;
         this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 

@@ -3,10 +3,12 @@ package com.example.services;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
+import jakarta.enterprise.context.ApplicationScoped;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
+@ApplicationScoped
 public class ExpirationService implements ValidationService {
 
     @Override

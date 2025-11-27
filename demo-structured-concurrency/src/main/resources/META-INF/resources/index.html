@@ -85,8 +85,19 @@
             font-weight: 600;
         }
 
-        .form-group {
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
             margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
         }
 
         label {
@@ -94,6 +105,7 @@
             margin-bottom: 8px;
             color: #555;
             font-weight: 600;
+            font-size: 0.9em;
         }
 
         input, select {
@@ -264,6 +276,17 @@
             border-radius: 8px;
             margin: 20px 0;
         }
+
+        .version-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
     </style>
 </head>
 <body>
@@ -302,32 +325,53 @@
                 </div>
 
                 <form id="transactionForm">
-                    <div class="form-group">
-                        <label>Número de Tarjeta</label>
-                        <input type="text" id="cardNumber" required>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Número de Tarjeta</label>
+                            <input type="text" id="cardNumber" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Fecha de Expiración (MMYY)</label>
+                            <input type="text" id="expirationDate" placeholder="2512" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>PIN</label>
+                            <input type="text" id="pin" placeholder="1234" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Monto</label>
+                            <input type="number" id="amount" step="0.01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Comercio</label>
+                            <input type="text" id="merchant" required>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Fecha de Expiración (MMYY)</label>
-                        <input type="text" id="expirationDate" placeholder="2512" required>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Versión Reactive</label>
+                            <select id="reactiveVersion">
+                                <option value="basic">Basic (allOf - espera todas)</option>
+                                <option value="with-exceptions">Con Excepciones (espera todas)</option>
+                                <option value="fail-fast" selected>Fail-Fast Manual (complejo)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Versión Structured</label>
+                            <select id="structuredVersion">
+                                <option value="normal">Normal (awaitAll - espera todas)</option>
+                                <option value="fail-fast" selected>Fail-Fast Automático</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>PIN</label>
-                        <input type="text" id="pin" placeholder="1234" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Monto</label>
-                        <input type="number" id="amount" step="0.01" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Comercio</label>
-                        <input type="text" id="merchant" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary full-width">
                         ⚡ Comparar Reactive vs Structured
                     </button>
                 </form>
@@ -376,7 +420,7 @@
             },
             expired: {
                 cardNumber: '1111-2222-3333-4444',
-                expirationDate: '2020',
+                expirationDate: '1220',
                 pin: '1234',
                 amount: 50.00,
                 merchant: 'Test Store'
@@ -438,10 +482,23 @@
             return await response.json();
         }
 
+        // Get version label
+        function getVersionLabel(version) {
+            const labels = {
+                'basic': 'Basic',
+                'with-exceptions': 'Con Excepciones',
+                'fail-fast': 'Fail-Fast',
+                'normal': 'Normal'
+            };
+            return labels[version] || version;
+        }
+
         // Mostrar resultado
-        function displayResult(containerId, result) {
+        function displayResult(containerId, result, version) {
             const success = result.success;
+            const versionLabel = getVersionLabel(version);
             const html = `
+                <div class="version-badge">${versionLabel}</div>
                 <div class="metric">
                     <span class="metric-label">Estado</span>
                     <span class="metric-value ${success ? 'success' : 'failure'}">
@@ -467,17 +524,30 @@
         }
 
         // Mostrar mejora
-        function displayImprovement(reactiveTime, structuredTime) {
+        function displayImprovement(reactiveTime, structuredTime, reactiveVersion, structuredVersion) {
             if (reactiveTime > structuredTime) {
                 const improvement = ((reactiveTime - structuredTime) / reactiveTime * 100).toFixed(0);
                 document.getElementById('improvement').innerHTML = `
-                    <h3>🎉 ¡Structured Concurrency es más rápido!</h3>
+                    <h3>🎉 ¡Structured (${getVersionLabel(structuredVersion)}) es más rápido!</h3>
                     <div class="percentage">${improvement}% más rápido</div>
-                    <p>Reactive: ${reactiveTime}ms | Structured: ${structuredTime}ms</p>
+                    <p>Reactive (${getVersionLabel(reactiveVersion)}): ${reactiveTime}ms |
+                       Structured (${getVersionLabel(structuredVersion)}): ${structuredTime}ms</p>
+                `;
+                document.getElementById('improvement').classList.remove('hidden');
+            } else if (structuredTime > reactiveTime) {
+                const diff = ((structuredTime - reactiveTime) / structuredTime * 100).toFixed(0);
+                document.getElementById('improvement').innerHTML = `
+                    <h3>⚠️ Reactive (${getVersionLabel(reactiveVersion)}) fue más rápido</h3>
+                    <div class="percentage">${diff}% más rápido</div>
+                    <p>Probablemente porque ambos están esperando todas las validaciones</p>
                 `;
                 document.getElementById('improvement').classList.remove('hidden');
             } else {
-                document.getElementById('improvement').classList.add('hidden');
+                document.getElementById('improvement').innerHTML = `
+                    <h3>⚖️ Performance similar</h3>
+                    <p>Ambas versiones tienen tiempos comparables (~${reactiveTime}ms)</p>
+                `;
+                document.getElementById('improvement').classList.remove('hidden');
             }
         }
 
@@ -493,6 +563,10 @@
                 merchant: document.getElementById('merchant').value
             };
 
+            // Get selected versions
+            const reactiveVersion = document.getElementById('reactiveVersion').value;
+            const structuredVersion = document.getElementById('structuredVersion').value;
+
             // Mostrar panel de resultados
             document.getElementById('resultsContainer').classList.remove('hidden');
             document.getElementById('reactiveResults').innerHTML = `
@@ -504,15 +578,15 @@
             document.getElementById('improvement').classList.add('hidden');
 
             try {
-                // Ejecutar ambas en paralelo
+                // Ejecutar ambas en paralelo con las versiones seleccionadas
                 const [reactiveResult, structuredResult] = await Promise.all([
-                    processTransaction('reactive/fail-fast', request),
-                    processTransaction('structured/fail-fast', request)
+                    processTransaction(`reactive/${reactiveVersion}`, request),
+                    processTransaction(`structured/${structuredVersion}`, request)
                 ]);
 
-                displayResult('reactiveResults', reactiveResult);
-                displayResult('structuredResults', structuredResult);
-                displayImprovement(reactiveResult.processingTimeMs, structuredResult.processingTimeMs);
+                displayResult('reactiveResults', reactiveResult, reactiveVersion);
+                displayResult('structuredResults', structuredResult, structuredVersion);
+                displayImprovement(reactiveResult.processingTimeMs, structuredResult.processingTimeMs, reactiveVersion, structuredVersion);
 
                 // Recargar balances
                 setTimeout(loadBalances, 500);

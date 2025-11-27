@@ -15,9 +15,12 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+@ApplicationScoped
 public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
     private static final Logger logger = LogManager.getLogger(BasicReactivePaymentProcessor.class);
 
@@ -25,13 +28,20 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
     private final List<ValidationService> cardValidations;
-
+    
     public BasicReactivePaymentProcessor() {
-        this.balanceService = new BalanceService();
-        this.cardValidationService = new CardValidationService();
-        ExpirationService expirationService = new ExpirationService();
-        PinValidationService pinValidationService = new PinValidationService();
-        this.merchantValidationService = new MerchantValidationService();
+        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
+    }
+    @Inject
+    public BasicReactivePaymentProcessor(
+            BalanceService balanceService,
+            CardValidationService cardValidationService,
+            ExpirationService expirationService,
+            PinValidationService pinValidationService,
+            MerchantValidationService merchantValidationService) {
+        this.balanceService = balanceService;
+        this.cardValidationService = cardValidationService;
+        this.merchantValidationService = merchantValidationService;
         this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 

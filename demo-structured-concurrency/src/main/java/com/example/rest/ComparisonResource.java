@@ -4,6 +4,7 @@ import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.reactive.BasicReactivePaymentProcessor;
 import com.example.structured.StructuredPaymentProcessor;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.logging.log4j.LogManager;
@@ -16,6 +17,12 @@ import java.util.concurrent.ExecutionException;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ComparisonResource {
     private static final Logger logger = LogManager.getLogger(ComparisonResource.class);
+
+    @Inject
+    BasicReactivePaymentProcessor reactiveProcessor;
+
+    @Inject
+    StructuredPaymentProcessor structuredProcessor;
 
     public record ComparisonResult(
         TransactionResult reactiveResult,
@@ -30,13 +37,11 @@ public class ComparisonResource {
         logger.info("⚖️  Running PERFORMANCE COMPARISON");
 
         // Run reactive
-        BasicReactivePaymentProcessor reactiveProcessor = new BasicReactivePaymentProcessor();
         long reactiveStart = System.currentTimeMillis();
         TransactionResult reactiveResult = reactiveProcessor.processTransaction(request).get();
         long reactiveTime = System.currentTimeMillis() - reactiveStart;
 
         // Run structured
-        StructuredPaymentProcessor structuredProcessor = new StructuredPaymentProcessor();
         long structuredStart = System.currentTimeMillis();
         TransactionResult structuredResult = structuredProcessor.processTransaction(request);
         long structuredTime = System.currentTimeMillis() - structuredStart;

@@ -3,7 +3,9 @@ package com.example.services;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
+import jakarta.enterprise.context.ApplicationScoped;
 
+@ApplicationScoped
 public class MerchantValidationService implements ValidationService {
 
     @Override
