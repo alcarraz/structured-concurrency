@@ -100,7 +100,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
                        failureMessage, processingTime);
             logger.debug("   ⚡ Other validations were automatically cancelled!");
             if (e.getCause() instanceof ValidationException ve) return TransactionResult.failure(ve.getResult().message(), processingTime);
-            e.printStackTrace();
+            logger.error(e);
             return TransactionResult.failure(failureMessage, processingTime);
         }
     }
