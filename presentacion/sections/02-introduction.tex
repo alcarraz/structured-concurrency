@@ -123,31 +123,31 @@
     \end{alertblock}
 \end{frame}
 
-\subsection{Demo Setup: Quarkus REST API}
-\begin{frame}[fragile]
-    \begin{block}{Iniciando la aplicación}
-        \begin{minted}[fontsize=\footnotesize]{bash}
-./gradlew quarkusDev
-        \end{minted}
-    \end{block}
-
-    \vspace{1em}
-
-    \begin{block}{Verificando que funciona}
-        \begin{minted}[fontsize=\footnotesize]{bash}
-curl http://localhost:8080/api/health
-        \end{minted}
-    \end{block}
-
-    \vspace{1em}
-
-    \begin{exampleblock}{Endpoints disponibles}
-        \begin{itemize}
-            \item \texttt{POST /api/reactive/basic} - CompletableFuture básico
-            \item \texttt{POST /api/reactive/fail-fast} - Reactive con fail-fast manual
-            \item \texttt{POST /api/structured/normal} - Structured Concurrency (await all)
-            \item \texttt{POST /api/structured/fail-fast} - Structured con fail-fast automático
-            \item \texttt{POST /api/compare} - Comparación de performance
-        \end{itemize}
-    \end{exampleblock}
-\end{frame}
+%\subsection{Demo Setup: Quarkus REST API}
+%\begin{frame}[fragile]
+%    \begin{block}{Iniciando la aplicación}
+%        \begin{minted}[fontsize=\footnotesize]{bash}
+%./gradlew quarkusDev
+%        \end{minted}
+%    \end{block}
+%
+%    \vspace{1em}
+%
+%    \begin{block}{Verificando que funciona}
+%        \begin{minted}[fontsize=\footnotesize]{bash}
+%curl http://localhost:8080/api/health
+%        \end{minted}
+%    \end{block}
+%
+%    \vspace{1em}
+%
+%    \begin{exampleblock}{Endpoints disponibles}
+%        \begin{itemize}
+%            \item \texttt{POST /api/reactive/basic} - CompletableFuture básico
+%            \item \texttt{POST /api/reactive/fail-fast} - Reactive con fail-fast manual
+%            \item \texttt{POST /api/structured/normal} - Structured Concurrency (await all)
+%            \item \texttt{POST /api/structured/fail-fast} - Structured con fail-fast automático
+%            \item \texttt{POST /api/compare} - Comparación de performance
+%        \end{itemize}
+%    \end{exampleblock}
+%\end{frame}
