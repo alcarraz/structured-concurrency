@@ -69,28 +69,39 @@ public TransactionResult processTransaction(TransactionRequest request) throws I
 %}
 %\end{minted}
 %\end{frame}
-\subsection{Demostración}
-\begin{frame}
-    \frametitle{Demo Time!}
-    \begin{center}
-        \LARGE{Rezarle a los dioses de las demos \emoji{folded-hands}}
-    \end{center}
-
-    \begin{block}{Demo Block 1: Concurrencia Estructurada}
-        \begin{itemize}
-            \item \texttt{./gradlew demoReactive} - CompletableFuture básico
-            \item \texttt{./gradlew demoReactiveExceptions} - Reactive con excepciones (¡no fail-fast!)
-            \item \texttt{./gradlew demoStructured} - Concurrencia Estructurada limpio
-            \item \texttt{./gradlew demoCompareFailure} - \textbf{Comparación fail-fast} (60\% más rápido)
-            \item \texttt{./gradlew demoCompare} - Comparación caso éxito (paridad)
-        \end{itemize}
+\subsection{Demo: Structured Concurrency con REST API}
+\begin{frame}[fragile]
+    \begin{block}{Probemos Structured Concurrency}
+        \begin{minted}[fontsize=\scriptsize]{bash}
+curl -X POST http://localhost:8080/api/structured/normal \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cardNumber": "1234-5678-9012-3456",
+    "expirationDate": "2512",
+    "pin": "1234",
+    "amount": 100.00,
+    "merchant": "Demo Store"
+  }'
+        \end{minted}
     \end{block}
 
-    \begin{exampleblock}{Escenarios de Prueba}
-        \begin{itemize}
-            \item \checkmark{} Transacción válida: Customer 12345, Card 4532-***-9012
-            \item $\times$ Tarjeta expirada: Customer 12345, Card 5555-***-2222 (¡fail-fast!)
-        \end{itemize}
+    \vspace{1em}
+
+    \begin{exampleblock}{Respuesta esperada}
+        \begin{minted}[fontsize=\tiny]{json}
+{
+  "success": true,
+  "transactionId": "uuid-here",
+  "amount": 100.00,
+  "message": "Transaction processed successfully",
+  "processingTimeMs": 520
+}
+        \end{minted}
     \end{exampleblock}
+
+    \vspace{0.5em}
+    \begin{alertblock}{¡Mismo performance, código más simple!}
+        Sin callbacks, sin CompletionException, código que lee como se ejecuta.
+    \end{alertblock}
 \end{frame}
 

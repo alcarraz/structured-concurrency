@@ -44,3 +44,39 @@ public CompletableFuture<TransactionResult> processTransaction(TransactionReques
     \end{exampleblock}
 \end{frame}
 
+\subsection{Demo: Reactive Basic con REST API}
+\begin{frame}[fragile]
+    \begin{block}{Probemos el approach reactivo}
+        \begin{minted}[fontsize=\scriptsize]{bash}
+curl -X POST http://localhost:8080/api/reactive/basic \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cardNumber": "1234-5678-9012-3456",
+    "expirationDate": "2512",
+    "pin": "1234",
+    "amount": 100.00,
+    "merchant": "Demo Store"
+  }'
+        \end{minted}
+    \end{block}
+
+    \vspace{1em}
+
+    \begin{exampleblock}{Respuesta esperada}
+        \begin{minted}[fontsize=\tiny]{json}
+{
+  "success": true,
+  "transactionId": "uuid-here",
+  "amount": 100.00,
+  "message": "Transaction processed successfully",
+  "processingTimeMs": 520
+}
+        \end{minted}
+    \end{exampleblock}
+
+    \vspace{0.5em}
+    \begin{alertblock}{Observa}
+        Funciona... pero el código es complejo. ¿Hay una mejor forma?
+    \end{alertblock}
+\end{frame}
+

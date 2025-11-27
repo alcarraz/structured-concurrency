@@ -1,0 +1,170 @@
+\section{La Funcionalidad Estrella: Fail-Fast}
+
+\subsection{El Problema del Fail-Fast}
+\begin{frame}
+    \begin{center}
+        \Large{¿Qué pasa cuando una validación falla temprano?}
+    \end{center}
+
+    \vspace{2em}
+
+    \begin{alertblock}{Reactive Basic: Sin fail-fast}
+        \begin{itemize}
+            \item \texttt{allOf()} espera que TODAS las tareas terminen
+            \item Sin cancelación → desperdicio de recursos
+            \item ~570ms incluso si falla en 200ms
+        \end{itemize}
+    \end{alertblock}
+
+    \begin{exampleblock}{Reactive "Fixed": Fail-fast manual}
+        \begin{itemize}
+            \item Se puede lograr... pero requiere lógica compleja
+            \item \texttt{failFast.completeExceptionally()} + coordinación manual
+            \item 150+ líneas, propenso a race conditions
+        \end{itemize}
+    \end{exampleblock}
+
+    \begin{block}{Structured: Fail-fast automático}
+        \begin{itemize}
+            \item \texttt{StructuredTaskScope.open()} = fail-fast por defecto
+            \item Cancelación automática en cascada
+            \item ~40 líneas, simple y garantizado
+        \end{itemize}
+    \end{block}
+\end{frame}
+
+\subsection{Comparación de Código}
+\begin{frame}[fragile]
+    \frametitle{Reactive Basic (sin fail-fast)}
+    \begin{minted}[fontsize=\tiny]{java}
+public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
+    return CompletableFuture
+        .supplyAsync(() -> cardValidationService.validate(request.cardNumber()))
+        .thenCompose(cardResult -> {
+            if (!cardResult.success())
+                return CompletableFuture.completedFuture(TransactionResult.failure(xxx));
+
+            var balanceValidation = CompletableFuture.supplyAsync(() ->
+                balanceService.validate(request.cardNumber(), request.amount()));
+            var pinValidation = CompletableFuture.supplyAsync(() ->
+                pinValidationService.validate(request.cardNumber(), request.pin()));
+            var expirationValidation = CompletableFuture.supplyAsync(() ->
+                expirationService.validate(request.expirationDate()));
+
+            // allOf() ESPERA TODAS - sin cancelación
+            return CompletableFuture.allOf(balanceValidation, pinValidation, expirationValidation)
+                .thenCompose(_ -> {
+                    List<ValidationResult> results = List.of(
+                        balanceValidation.join(), pinValidation.join(), expirationValidation.join());
+
+                    Optional<ValidationResult> failure =
+                        results.stream().filter(r -> !r.success()).findFirst();
+                    if (failure.isPresent()) {
+                        balanceService.releaseAmount(request);  // Rollback manual
+                        return CompletableFuture.completedFuture(
+                            TransactionResult.failure(failure.get().message()));
+                    }
+                    return CompletableFuture.supplyAsync(() ->
+                        balanceService.transfer(request));
+                });
+        });
+}
+// ~80 líneas | Espera TODAS las tareas | ~570ms en caso de fallo
+    \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Structured Fail-Fast (automático)}
+    \begin{minted}[fontsize=\footnotesize]{java}
+// FAIL-FAST: Cancela automáticamente al primer fallo
+public TransactionResult processTransaction(TransactionRequest request)
+        throws InterruptedException {
+    ValidationResult cardResult = cardValidationService.validate(request.cardNumber());
+    if (!cardResult.success())
+        return TransactionResult.failure(cardResult.message());
+
+    try (var scope = StructuredTaskScope.open()) {  // open() sin joiner = fail-fast!
+        var balanceTask = scope.fork(() -> {
+            ValidationResult result = balanceService.validate(
+                request.cardNumber(), request.amount());
+            if (!result.success())
+                throw new RuntimeException(result.message());
+            return result;
+        });
+        var pinTask = scope.fork(() -> { /* similar */ });
+        var expirationTask = scope.fork(() -> { /* similar */ });
+
+        scope.join();  // Cancela tareas restantes al primer fallo
+
+        balanceService.transfer(request);  // Balance lock se libera automáticamente
+        return TransactionResult.success(xxx);
+
+    } catch (StructuredTaskScope.FailedException e) {
+        balanceService.releaseAmount(request);  // Rollback explícito
+        return TransactionResult.failure("FAIL-FAST: " + e.getMessage());
+    }
+}
+// ~40 líneas | Cancelación automática | ~230ms en caso de fallo | 60% MÁS RÁPIDO
+    \end{minted}
+\end{frame}
+
+\subsection{Demo: La Comparación Dramática}
+\begin{frame}[fragile]
+    \begin{block}{Probemos fail-fast con REST API}
+        \begin{minted}[fontsize=\scriptsize]{bash}
+# Escenario: Tarjeta expirada (falla en 200ms)
+curl -X POST http://localhost:8080/api/compare \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cardNumber": "1111-2222-3333-4444",
+    "expirationDate": "2020",
+    "pin": "1234",
+    "amount": 50.00,
+    "merchant": "Test Store"
+  }'
+        \end{minted}
+    \end{block}
+
+    \vspace{1em}
+
+    \begin{alertblock}{Resultado Esperado}
+        \begin{itemize}
+            \item \textbf{Reactive Basic}: ~570ms (esperó todas las validaciones)
+            \item \textbf{Structured Fail-Fast}: ~230ms (canceló inmediatamente)
+            \item \textbf{Mejora}: \textcolor{red}{\textbf{60\% más rápido!}}
+        \end{itemize}
+    \end{alertblock}
+
+    \vspace{0.5em}
+    \begin{exampleblock}{Balance Locking}
+        El saldo bloqueado se libera correctamente en ambos casos (rollback automático)
+    \end{exampleblock}
+\end{frame}
+
+\subsection{Por Qué Esto Importa}
+\begin{frame}
+    \begin{exampleblock}{Impacto en la Experiencia de Usuario}
+        \begin{itemize}
+            \item \textbf{Falla rápido}: Reporta errores inmediato, mejor UX
+            \item \textbf{Menor latencia}: 60\% más rápido en casos de error
+            \item \textbf{Feedback claro}: Usuario no espera innecesariamente
+        \end{itemize}
+    \end{exampleblock}
+
+    \vspace{1em}
+
+    \begin{block}{Impacto en Recursos y Costos}
+        \begin{itemize}
+            \item \textbf{Eficiencia}: Cancela trabajo innecesario automáticamente
+            \item \textbf{Ahorro de CPU}: No procesa validaciones que no se usarán
+            \item \textbf{Resource safety}: Balance locks liberados automáticamente
+            \item \textbf{Menor carga}: Sistema responde más rápido en picos de errores
+        \end{itemize}
+    \end{block}
+
+    \vspace{1em}
+
+    \begin{alertblock}{Esto es Arquitectural, No Solo Performance}
+        Fail-fast cambia cómo diseñamos sistemas: de "optimista y costoso" a "pragmático y eficiente"
+    \end{alertblock}
+\end{frame}
