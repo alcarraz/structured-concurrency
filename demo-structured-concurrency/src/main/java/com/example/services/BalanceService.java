@@ -97,7 +97,7 @@ public class BalanceService implements ValidationService {
      * Consumes the locked amount and debits the balance.
      */
     public void transfer(TransactionRequest request) {
-        DemoUtil.simulateNetworkDelay(500);
+//        DemoUtil.simulateNetworkDelay(500);
 
         String cardNumber = request.cardNumber();
         String merchant = request.merchant();
