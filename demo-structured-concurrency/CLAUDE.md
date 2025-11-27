@@ -226,6 +226,29 @@ CompletableFuture.supplyAsync(() -> {
 });
 ```
 
+## Logging Configuration
+
+### Dual Logging Setup
+The project uses **dual logging configuration** to support both Quarkus REST API mode and standalone demo execution:
+
+1. **`application.properties`** - Quarkus logging configuration (REST API mode)
+   - Used when running `./gradlew quarkusDev`
+   - Configures Quarkus's built-in logging system
+
+2. **`log4j2.xml`** - Log4J 2 configuration (Standalone demos)
+   - **REQUIRED** for standalone JavaExec demo tasks (`./gradlew demoReactive`, etc.)
+   - Without this file, demos run but produce ZERO output
+   - Simple pattern: `%msg%n` (message only, no timestamps/levels for clean demo output)
+
+**IMPORTANT**: Do NOT delete `log4j2.xml` even though it might seem redundant with `application.properties`. Standalone demos depend on it for any console output.
+
+### Log Pattern
+Both configurations use minimal formatting for clean demo output:
+```
+%msg%n
+```
+This produces clean, emoji-enhanced messages without timestamps or log levels cluttering presentation demos.
+
 ## Java 25 Preview Features Used
 - **Structured Concurrency** (`StructuredTaskScope`) - Automatic subtask cancellation and lifecycle management
 - **Scoped Values** - Thread-safe context propagation without ThreadLocal
