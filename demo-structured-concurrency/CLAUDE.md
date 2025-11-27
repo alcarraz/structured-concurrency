@@ -116,6 +116,43 @@ curl -X POST http://localhost:8080/api/compare \
   }'
 ```
 
+### Web UI
+
+The application includes an interactive Web UI for visual demos during presentations.
+
+**Access the Web UI:**
+```bash
+# Start the application
+./gradlew quarkusDev
+
+# Open in browser
+http://localhost:8080
+```
+
+**Features:**
+- 💳 **Balance Panel**: View current balances for all cards in real-time
+- 📝 **Transaction Form**: Submit transactions with preset scenarios
+- 📊 **Comparison Panel**: Side-by-side results showing Reactive vs Structured performance
+- 🎯 **Preset Scenarios**:
+  - ✅ Valid Transaction (success case)
+  - ⏰ Expired Card (fail-fast demo - 60% faster)
+  - 💸 Insufficient Balance
+  - 🔒 Invalid PIN
+
+**Balance Management API:**
+```bash
+# Get all balances
+curl http://localhost:8080/api/balance
+
+# Get specific card balance
+curl http://localhost:8080/api/balance/1234-5678-9012-3456
+
+# Update balance (for demo purposes)
+curl -X PUT http://localhost:8080/api/balance/1234-5678-9012-3456 \
+  -H "Content-Type: application/json" \
+  -d '1000.00'
+```
+
 ## Architecture
 
 ### Package Structure
