@@ -1,7 +1,7 @@
 \section{Implementación reactiva}\label{sec:el-problema:-reactive-programming}
 
+\subsection{Código de ejemplo}
 \begin{frame}[fragile]
-    \frametitle{Código de Ejemplo}
     \begin{minted}[fontsize=\footnotesize]{java}
 public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
     CompletableFuture<ValidationResult> merchantValidation =
@@ -10,16 +10,19 @@ public CompletableFuture<TransactionResult> processTransaction(TransactionReques
         CompletableFuture.supplyAsync(() -> {
             ValidationResult cardResult = cardValidationService.validate(request);
             if (!cardResult.success()) return cardResult;
-
             var validations = cardValidations.stream()
                 .map(s -> CompletableFuture.supplyAsync(() -> s.validate(request)))
                 .toList();
             CompletableFuture.allOf(validations.toArray(new CompletableFuture[0])).join();
         });
-    return CompletableFuture.allOf(merchantValidation, consumerValidation)
-        .thenCompose(_ -> {
-            return CompletableFuture.runAsync(() -> balanceService.transfer(request))
-                .thenApply(_ -> TransactionResult.success(...));
+    return CompletableFuture.allOf(merchantValidation, consumerValidation).thenCompose(_ -> {
+            Stream.of(merchantValidation, consumerValidation).map(CompletableFuture::join)
+                .filter(r -> !r.success()).findFirst()
+                .map(failure -> { balanceService.releaseAmount(request);
+                    return CompletableFuture.completedFuture( TransactionResult.failure(...));                    
+                }).orElseGet(() -> CompletableFuture.runAsync(
+                        () -> balanceService.transfer(request))
+                ).thenApply(_ -> TransactionResult.success(...));
         });
 }
     \end{minted}
