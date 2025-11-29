@@ -1,9 +1,12 @@
 package com.example.services;
 
+import com.example.model.Card;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
+import com.example.repository.CardRepository;
 import com.example.utils.DemoUtil;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,8 +25,8 @@ import static java.math.BigDecimal.ZERO;
 public class BalanceService implements ValidationService {
     private static final Logger logger = LogManager.getLogger(BalanceService.class);
 
-    // Account balances by card number
-    private final ConcurrentHashMap<String, BigDecimal> balances = new ConcurrentHashMap<>();
+    @Inject
+    CardRepository cardRepository;
 
     // Pending transactions by card number (tracks which transactions have locked funds)
     private final ConcurrentHashMap<String, Set<TransactionRequest>> pendingTransactions = new ConcurrentHashMap<>();
@@ -32,10 +35,6 @@ public class BalanceService implements ValidationService {
     private final ConcurrentHashMap<String, Lock> cardLocks = new ConcurrentHashMap<>();
 
     public BalanceService() {
-        // Initialize with demo account data
-        balances.put("1234-5678-9012-3456", new BigDecimal("5000"));
-        balances.put("9876-5432-1098-7654", new BigDecimal("500"));
-        balances.put("1111-2222-3333-4444", new BigDecimal("100"));
     }
 
     private Lock getLock(String cardNumber) {
@@ -56,7 +55,12 @@ public class BalanceService implements ValidationService {
         Lock lock = getLock(cardNumber);
         lock.lock();
         try {
-            BigDecimal availableBalance = getAvailableBalance(cardNumber);
+            // Get balance from CardRepository instead of local balances map
+            BigDecimal cardBalance = cardRepository.findByCardNumber(cardNumber)
+                    .map(Card::getBalance)
+                    .orElse(ZERO);
+
+            BigDecimal availableBalance = cardBalance.subtract(getLockedAmount(cardNumber));
 
             if (availableBalance.compareTo(amount) < 0) {
                 return ValidationResult.failure("Balance Check: Insufficient funds (available: " + availableBalance + ")");
@@ -106,13 +110,20 @@ public class BalanceService implements ValidationService {
         Lock lock = getLock(cardNumber);
         lock.lock();
         try {
-            BigDecimal currentBalance = balances.getOrDefault(cardNumber, ZERO);
+            // Get current balance from CardRepository
+            BigDecimal currentBalance = cardRepository.findByCardNumber(cardNumber)
+                    .map(Card::getBalance)
+                    .orElse(ZERO);
 
             // Release the lock since we've consumed it
             releaseAmount(cardNumber, request);
 
-            // Debit the actual balance
-            balances.put(cardNumber, currentBalance.subtract(amount));
+            // Debit the actual balance and update in CardRepository
+            BigDecimal newBalance = currentBalance.subtract(amount);
+            cardRepository.findByCardNumber(cardNumber).ifPresent(card -> {
+                card.setBalance(newBalance);
+                cardRepository.save(card);
+            });
 
             // now we should put the money in the merchant account
 
@@ -128,10 +139,6 @@ public class BalanceService implements ValidationService {
      */
     private boolean releaseAmount(String cardNumber, TransactionRequest request) {
         return getPendingTransactions(cardNumber).remove(request);
-    }
-
-    private BigDecimal getAvailableBalance(String cardNumber) {
-        return balances.computeIfAbsent(cardNumber, _ -> ZERO).subtract(getLockedAmount(cardNumber));
     }
 
     /**
@@ -154,14 +161,19 @@ public class BalanceService implements ValidationService {
      * Returns all card balances (for Web UI).
      */
     public Map<String, BigDecimal> getAllBalances() {
-        return new HashMap<>(balances);
+        return cardRepository.findAll().stream()
+                .collect(HashMap::new,
+                        (map, card) -> map.put(card.getCardNumber(), card.getBalance()),
+                        HashMap::putAll);
     }
 
     /**
      * Returns balance for specific card (for Web UI).
      */
     public BigDecimal getBalance(String cardNumber) {
-        return balances.getOrDefault(cardNumber, ZERO);
+        return cardRepository.findByCardNumber(cardNumber)
+                .map(Card::getBalance)
+                .orElse(ZERO);
     }
 
     /**
@@ -171,7 +183,10 @@ public class BalanceService implements ValidationService {
         Lock lock = getLock(cardNumber);
         lock.lock();
         try {
-            balances.put(cardNumber, newBalance);
+            cardRepository.findByCardNumber(cardNumber).ifPresent(card -> {
+                card.setBalance(newBalance);
+                cardRepository.save(card);
+            });
         } finally {
             lock.unlock();
         }

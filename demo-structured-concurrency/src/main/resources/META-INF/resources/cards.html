@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Tarjetas - Structured Concurrency Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2em;
+            margin: 0;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .header-nav a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: color 0.3s;
+        }
+
+        .header-nav a:hover {
+            color: #764ba2;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 1.4em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .search-container input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table thead {
+            background: #f8f9fa;
+            border-bottom: 3px solid #667eea;
+        }
+
+        table th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+        }
+
+        table td {
+            padding: 16px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 24px;
+            color: #333;
+            font-size: 1.5em;
+            border: none;
+            padding: 0;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: flex-end;
+        }
+
+        .modal-actions button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state p {
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📇 Gestión de Tarjetas</h1>
+            <div class="header-nav">
+                <a href="index.html">← Volver a Transacciones</a>
+                <button class="btn btn-primary" id="newCardBtn">+ Nueva Tarjeta</button>
+            </div>
+        </header>
+
+        <div class="card">
+            <h2>Tarjetas Disponibles</h2>
+
+            <div class="search-container">
+                <input type="text" id="searchCards" placeholder="Buscar por número de tarjeta o descripción...">
+            </div>
+
+            <div id="cardsContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Cargando tarjetas...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Formulario de Tarjeta -->
+    <div id="cardModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Nueva Tarjeta</h2>
+            <form id="cardForm">
+                <div class="form-group">
+                    <label>Número de Tarjeta *</label>
+                    <input type="text" id="cardNumber" required placeholder="ej: 1234-5678-9012-3456">
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha de Expiración (YYMM) *</label>
+                    <input type="text" id="expirationDate" required placeholder="ej: 2512" maxlength="4">
+                </div>
+
+                <div class="form-group">
+                    <label>PIN *</label>
+                    <input type="text" id="pin" required placeholder="ej: 1234" maxlength="4">
+                </div>
+
+                <div class="form-group">
+                    <label>Balance *</label>
+                    <input type="number" id="balance" required placeholder="0.00" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción (Opcional)</label>
+                    <textarea id="description" placeholder="Descripción de la tarjeta..."></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación de Eliminación -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h2>Confirmar Eliminación</h2>
+            <p id="deleteMessage"></p>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        let currentEditCard = null;
+        let cardToDelete = null;
+
+        // Cargar tarjetas
+        async function loadCards() {
+            try {
+                const response = await fetch(`${API_BASE}/cards`);
+                const cards = await response.json();
+
+                if (cards.length === 0) {
+                    document.getElementById('cardsContainer').innerHTML = `
+                        <div class="empty-state">
+                            <p>No hay tarjetas disponibles</p>
+                            <p>Haz clic en "+ Nueva Tarjeta" para crear una</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                renderCardsTable(cards);
+            } catch (error) {
+                document.getElementById('cardsContainer').innerHTML = `
+                    <div class="error">Error cargando tarjetas: ${error.message}</div>
+                `;
+            }
+        }
+
+        // Renderizar tabla de tarjetas
+        function renderCardsTable(cards) {
+            const html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Número de Tarjeta</th>
+                            <th>Expiración</th>
+                            <th>PIN</th>
+                            <th>Balance</th>
+                            <th>Descripción</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${cards.map(card => `
+                            <tr>
+                                <td><strong>${card.cardNumber}</strong></td>
+                                <td>${card.expirationDate}</td>
+                                <td>${'*'.repeat(card.pin.length)}</td>
+                                <td>$${parseFloat(card.balance).toFixed(2)}</td>
+                                <td>${card.description || '-'}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-info" onclick="editCard('${card.cardNumber}')">Editar</button>
+                                        <button class="btn btn-info" onclick="cloneCard('${card.cardNumber}')">Clonar</button>
+                                        <button class="btn btn-danger" onclick="deleteCard('${card.cardNumber}')">Eliminar</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('cardsContainer').innerHTML = html;
+        }
+
+        // Filtrar tarjetas
+        function filterCards() {
+            const searchTerm = document.getElementById('searchCards').value.toLowerCase();
+            const rows = document.querySelectorAll('table tbody tr');
+
+            rows.forEach(row => {
+                const cardNumber = row.cells[0].textContent.toLowerCase();
+                const description = row.cells[4].textContent.toLowerCase();
+
+                if (cardNumber.includes(searchTerm) || description.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Abrir modal de nueva tarjeta
+        function openNewCardModal() {
+            currentEditCard = null;
+            document.getElementById('modalTitle').textContent = 'Nueva Tarjeta';
+            document.getElementById('cardForm').reset();
+            document.getElementById('cardNumber').disabled = false;
+            document.getElementById('cardModal').classList.add('active');
+        }
+
+        // Editar tarjeta
+        async function editCard(cardNumber) {
+            try {
+                const response = await fetch(`${API_BASE}/cards/${cardNumber}`);
+                const card = await response.json();
+
+                currentEditCard = cardNumber;
+                document.getElementById('modalTitle').textContent = 'Editar Tarjeta';
+                document.getElementById('cardNumber').value = card.cardNumber;
+                document.getElementById('cardNumber').disabled = true;
+                document.getElementById('expirationDate').value = card.expirationDate;
+                document.getElementById('pin').value = card.pin;
+                document.getElementById('balance').value = card.balance;
+                document.getElementById('description').value = card.description || '';
+
+                document.getElementById('cardModal').classList.add('active');
+            } catch (error) {
+                alert('Error al cargar la tarjeta: ' + error.message);
+            }
+        }
+
+        // Clonar tarjeta
+        async function cloneCard(cardNumber) {
+            try {
+                const response = await fetch(`${API_BASE}/cards/${cardNumber}`);
+                const card = await response.json();
+
+                // Generar nuevo número de tarjeta
+                const newCardNumber = generateNewCardNumber();
+
+                currentEditCard = null;
+                document.getElementById('modalTitle').textContent = 'Clonar Tarjeta';
+                document.getElementById('cardNumber').value = newCardNumber;
+                document.getElementById('cardNumber').disabled = false;
+                document.getElementById('expirationDate').value = card.expirationDate;
+                document.getElementById('pin').value = card.pin;
+                document.getElementById('balance').value = card.balance;
+                document.getElementById('description').value = card.description || '';
+
+                // Guardar información de la tarjeta original para clonar
+                window.cloneFromCard = cardNumber;
+
+                document.getElementById('cardModal').classList.add('active');
+            } catch (error) {
+                alert('Error al clonar la tarjeta: ' + error.message);
+            }
+        }
+
+        // Generar nuevo número de tarjeta
+        function generateNewCardNumber() {
+            const timestamp = Date.now().toString().slice(-8);
+            return `9999-0000-${timestamp.slice(0, 4)}-0000`;
+        }
+
+        // Eliminar tarjeta
+        function deleteCard(cardNumber) {
+            cardToDelete = cardNumber;
+            document.getElementById('deleteMessage').textContent = `¿Estás seguro de que deseas eliminar la tarjeta ${cardNumber}? Esta acción no se puede deshacer.`;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        // Enviar formulario de tarjeta
+        async function submitCardForm(e) {
+            e.preventDefault();
+
+            const cardData = {
+                cardNumber: document.getElementById('cardNumber').value,
+                expirationDate: document.getElementById('expirationDate').value,
+                pin: document.getElementById('pin').value,
+                balance: parseFloat(document.getElementById('balance').value),
+                description: document.getElementById('description').value || null
+            };
+
+            try {
+                let response;
+
+                if (window.cloneFromCard) {
+                    // Clonar desde una tarjeta existente
+                    response = await fetch(`${API_BASE}/cards/${window.cloneFromCard}/clone?newCardNumber=${cardData.cardNumber}`, {
+                        method: 'POST'
+                    });
+                    window.cloneFromCard = null;
+                } else if (currentEditCard) {
+                    // Actualizar tarjeta existente
+                    response = await fetch(`${API_BASE}/cards/${currentEditCard}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(cardData)
+                    });
+                } else {
+                    // Crear nueva tarjeta
+                    response = await fetch(`${API_BASE}/cards`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(cardData)
+                    });
+                }
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+
+                document.getElementById('cardModal').classList.remove('active');
+                loadCards();
+            } catch (error) {
+                alert('Error al guardar la tarjeta: ' + error.message);
+            }
+        }
+
+        // Confirmar eliminación
+        async function confirmDelete() {
+            try {
+                const response = await fetch(`${API_BASE}/cards/${cardToDelete}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error al eliminar la tarjeta');
+                }
+
+                document.getElementById('deleteModal').classList.remove('active');
+                cardToDelete = null;
+                loadCards();
+            } catch (error) {
+                alert('Error al eliminar la tarjeta: ' + error.message);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('newCardBtn').addEventListener('click', openNewCardModal);
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            document.getElementById('cardModal').classList.remove('active');
+        });
+        document.getElementById('cardForm').addEventListener('submit', submitCardForm);
+
+        document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+            document.getElementById('deleteModal').classList.remove('active');
+        });
+        document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+
+        document.getElementById('searchCards').addEventListener('input', filterCards);
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('cardModal').addEventListener('click', (e) => {
+            if (e.target.id === 'cardModal') {
+                document.getElementById('cardModal').classList.remove('active');
+            }
+        });
+        document.getElementById('deleteModal').addEventListener('click', (e) => {
+            if (e.target.id === 'deleteModal') {
+                document.getElementById('deleteModal').classList.remove('active');
+            }
+        });
+
+        // Cargar tarjetas al inicio
+        loadCards();
+
+        // Recargar tarjetas cada 5 segundos
+        setInterval(loadCards, 5000);
+    </script>
+</body>
+</html>
