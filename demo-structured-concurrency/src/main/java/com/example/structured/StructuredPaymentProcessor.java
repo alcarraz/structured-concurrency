@@ -78,7 +78,7 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
                     return cardResult;
                 }
 
-                // Step 2: Parallel - Validate Balance, PIN, and Expiration
+                // Step 2: Parallel - Validate Balance, PIN and Expiration
                 try (var consumerScope = StructuredTaskScope.open(Joiner.<ValidationResult>allSuccessfulOrThrow())) {
                     cardValidations.forEach(
                             service -> consumerScope.fork(
