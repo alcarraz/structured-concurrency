@@ -2,19 +2,22 @@
 
 \subsection{Código de ejemplo}
 \begin{frame}[fragile]
-    \begin{minted}[fontsize=\footnotesize]{java}
+    \begin{minted}[fontsize=\scriptsize]{java}
 public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
+    // PATH A: Merchant validation
     CompletableFuture<ValidationResult> merchantValidation =
         CompletableFuture.supplyAsync(() -> merchantValidationService.validate(request));
+    // PATH B: Consumer validation (card → nested parallel validations)
     CompletableFuture<ValidationResult> consumerValidation =
         CompletableFuture.supplyAsync(() -> {
             ValidationResult cardResult = cardValidationService.validate(request);
             if (!cardResult.success()) return cardResult;
-            var validations = cardValidations.stream()
+            var validations = cardValidations.stream()  // Nested parallel: balance, PIN, expiration
                 .map(s -> CompletableFuture.supplyAsync(() -> s.validate(request)))
                 .toList();
             CompletableFuture.allOf(validations.toArray(new CompletableFuture[0])).join();
         });
+    // Process results and perform transfer if approved
     return CompletableFuture.allOf(merchantValidation, consumerValidation).thenCompose(_ -> {
             Stream.of(merchantValidation, consumerValidation).map(CompletableFuture::join)
                 .filter(r -> !r.success()).findFirst()

@@ -1,26 +1,30 @@
 \section{Concurrencia Estructurada}\label{sec:la-solucion:-structured-concurrency}
 \subsection{Ejemplo}
 \begin{frame}[fragile]
-\begin{minted}[fontsize=\footnotesize]{java}
-// STRUCTURED: Código que se lee como se ejecuta
+\begin{minted}[fontsize=\scriptsize]{java}
 public TransactionResult processTransaction(TransactionRequest request) throws InterruptedException {
-    ValidationResult cardResult = cardValidationService.validate(request.cardNumber());
-    if (!cardResult.success()) return TransactionResult.failure(cardResult.message());
+    try (var globalScope = StructuredTaskScope.open(Joiner.allSuccessfulOrThrow())) {
+        // PATH A: Merchant validation
+        globalScope.fork(() -> merchantValidationService.validate(request));
+        // PATH B: Consumer validation (card → nested parallel validations)
+        globalScope.fork(() -> {
+            ValidationResult cardResult = cardValidationService.validate(request);
+            if (!cardResult.success()) return cardResult;
+            // Nested parallel: balance, PIN, expiration
+            try (var consumerScope = StructuredTaskScope.open(Joiner.allSuccessfulOrThrow())) {
+                cardValidations.forEach(s -> consumerScope.fork(() -> s.validate(request)));
+                return consumerScope.join().map(Subtask::get)
+                    .filter(r -> !r.success()).findFirst().orElse(SUCCESS);
+            }
+        });
 
-    try (var scope = StructuredTaskScope.open(StructuredTaskScope.Joiner.awaitAll())) {
-        var balanceTask = scope.fork(() ->
-            balanceService.validate(request.cardNumber(), request.amount()));
-        // ... más validaciones paralelas
-
-        scope.join();
-
-        List<ValidationResult> results = List.of(balanceTask.get(), pinTask.get(), xxx);
-        Optional<ValidationResult> failure = results.stream().filter(r -> !r.success()).findFirst();
-        if (failure.isPresent())
-            return TransactionResult.failure(failure.get().message());
+        // Process results and perform transfer if approved
+        return globalScope.join().map(Subtask::get).filter(r -> !r.success()).findFirst()
+            .map(failure -> { balanceService.releaseAmount(request);
+                             return TransactionResult.failure( ...); })
+            .orElseGet(() -> { balanceService.transfer(request);
+                               return TransactionResult.success(...); });
     }
-    ValidationResult debitResult = balanceService.debit(request.cardNumber(), request.amount());
-    return debitResult.success() ? TransactionResult.success(xxx) : TransactionResult.failure(xxx);
 }
 \end{minted}
 \end{frame}
@@ -85,7 +89,6 @@ curl -X POST http://localhost:8080/api/structured/normal \
         \end{minted}
     \end{block}
 
-    \vspace{1em}
 
     \begin{exampleblock}{Respuesta esperada}
         \begin{minted}[fontsize=\tiny]{json}
@@ -99,9 +102,8 @@ curl -X POST http://localhost:8080/api/structured/normal \
         \end{minted}
     \end{exampleblock}
 
-    \vspace{0.5em}
     \begin{alertblock}{¡Mismo performance, código más simple!}
-        Sin callbacks, sin CompletionException, código que lee como se ejecuta.
+        Sin callbacks, código que lee como se ejecuta.
     \end{alertblock}
 \end{frame}
 
