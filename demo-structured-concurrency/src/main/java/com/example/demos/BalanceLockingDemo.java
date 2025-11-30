@@ -4,6 +4,12 @@ import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.structured.StructuredPaymentProcessor;
 import com.example.structured.FailFastStructuredPaymentProcessor;
+import com.example.repository.CardRepository;
+import com.example.services.BalanceService;
+import com.example.services.CardValidationService;
+import com.example.services.ExpirationService;
+import com.example.services.MerchantValidationService;
+import com.example.services.PinValidationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,6 +25,16 @@ public class BalanceLockingDemo {
     private static final Logger logger = LogManager.getLogger(BalanceLockingDemo.class);
 
     public void main() {
+        // Create CardRepository first
+        CardRepository cardRepository = new CardRepository();
+
+        // Create services (passing cardRepository to BalanceService)
+        BalanceService balanceService = new BalanceService(cardRepository);
+        CardValidationService cardValidationService = new CardValidationService();
+        ExpirationService expirationService = new ExpirationService();
+        PinValidationService pinValidationService = new PinValidationService();
+        MerchantValidationService merchantValidationService = new MerchantValidationService();
+
         logger.info("🔐 Running BALANCE LOCKING/UNLOCKING Demo");
         logger.info("════════════════════════════════════════");
         logger.info("");
@@ -31,11 +47,12 @@ public class BalanceLockingDemo {
         logger.info("");
 
         TransactionRequest successRequest = new TransactionRequest(
-            "1234-5678-9012-3456", "2512", "1234",
+            "1234-5678-9012-3456", "1225", "1234",
             new BigDecimal("100.00"), "TestMerchant"
         );
 
-        StructuredPaymentProcessor processor = new StructuredPaymentProcessor();
+        StructuredPaymentProcessor processor = new StructuredPaymentProcessor(balanceService,
+                cardValidationService, expirationService, pinValidationService, merchantValidationService);
         try {
             TransactionResult result = processor.processTransaction(successRequest);
             logger.info("");
@@ -59,11 +76,12 @@ public class BalanceLockingDemo {
         logger.info("");
 
         TransactionRequest failedRequest = new TransactionRequest(
-            "1234-5678-9012-3456", "2512", "1234",
+            "1234-5678-9012-3456", "1225", "1234",
             new BigDecimal("200.00"), "BLOCKED_Merchant"
         );
 
-        StructuredPaymentProcessor processor2 = new StructuredPaymentProcessor();
+        StructuredPaymentProcessor processor2 = new StructuredPaymentProcessor(balanceService,
+                cardValidationService, expirationService, pinValidationService, merchantValidationService);
         try {
             TransactionResult result = processor2.processTransaction(failedRequest);
             logger.info("");
@@ -87,11 +105,12 @@ public class BalanceLockingDemo {
         logger.info("");
 
         TransactionRequest failFastRequest = new TransactionRequest(
-            "9876-5432-1098-7654", "2512", "0000",
+            "9876-5432-1098-7654", "1225", "0000",
             new BigDecimal("50.00"), "TestMerchant"
         );
 
-        FailFastStructuredPaymentProcessor failFastProcessor = new FailFastStructuredPaymentProcessor();
+        FailFastStructuredPaymentProcessor failFastProcessor = new FailFastStructuredPaymentProcessor(balanceService,
+                cardValidationService, expirationService, pinValidationService, merchantValidationService);
         try {
             TransactionResult result = failFastProcessor.processTransaction(failFastRequest);
             logger.info("");

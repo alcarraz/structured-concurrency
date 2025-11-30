@@ -15,7 +15,6 @@ import java.util.UUID;
 import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.StructuredTaskScope.Joiner;
 import java.util.concurrent.StructuredTaskScope.Subtask;
-import java.util.stream.Stream;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -40,10 +39,6 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
     private final List<ValidationService> cardValidations;
-
-    public StructuredPaymentProcessor() {
-        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
-    }
 
     @Inject
     public StructuredPaymentProcessor(

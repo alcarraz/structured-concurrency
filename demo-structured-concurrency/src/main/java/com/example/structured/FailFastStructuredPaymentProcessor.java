@@ -41,10 +41,6 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
     private final MerchantValidationService merchantValidationService;
     private final List<ValidationService> cardValidations;
 
-    public FailFastStructuredPaymentProcessor() {
-        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
-    }
-
     @Inject
     public FailFastStructuredPaymentProcessor(
             BalanceService balanceService,

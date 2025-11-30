@@ -5,6 +5,12 @@ import com.example.reactive.ReactivePaymentProcessor;
 import com.example.reactive.BasicReactivePaymentProcessor;
 import com.example.structured.StructuredPaymentProcessor;
 import com.example.structured.StructuredProcessor;
+import com.example.repository.CardRepository;
+import com.example.services.BalanceService;
+import com.example.services.CardValidationService;
+import com.example.services.ExpirationService;
+import com.example.services.MerchantValidationService;
+import com.example.services.PinValidationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,24 +29,36 @@ public class CompareDemo {
     private static final Logger logger = LogManager.getLogger(CompareDemo.class);
 
     public void main() throws Exception {
+        // Create CardRepository first
+        CardRepository cardRepository = new CardRepository();
+
+        // Create services (passing cardRepository to BalanceService)
+        BalanceService balanceService = new BalanceService(cardRepository);
+        CardValidationService cardValidationService = new CardValidationService();
+        ExpirationService expirationService = new ExpirationService();
+        PinValidationService pinValidationService = new PinValidationService();
+        MerchantValidationService merchantValidationService = new MerchantValidationService();
+
         logger.info("⚖️  Running PERFORMANCE COMPARISON Demo");
         logger.info("════════════════════════════════════════");
 
         TransactionRequest request = new TransactionRequest(
-                "4532-1234-5678-9012", "2512", "1234",  // December 2025 (valid)
+                "4532-1234-5678-9012", "1225", "1234",  // December 2025 (valid)
             new BigDecimal("100.00"), "Comparison Test"
         );
 
         logger.info("\n1️⃣  REACTIVE APPROACH:");
         logger.info("─────────────────────");
-        ReactivePaymentProcessor reactiveProcessor = new BasicReactivePaymentProcessor();
+        ReactivePaymentProcessor reactiveProcessor = new BasicReactivePaymentProcessor(balanceService,
+                cardValidationService, expirationService, pinValidationService, merchantValidationService);
         long reactiveStart = System.currentTimeMillis();
         reactiveProcessor.processTransaction(request).get();
         long reactiveTime = System.currentTimeMillis() - reactiveStart;
 
         logger.info("\n2️⃣  STRUCTURED CONCURRENCY APPROACH:");
         logger.info("─────────────────────────────────────");
-        StructuredProcessor structuredProcessor = new StructuredPaymentProcessor();
+        StructuredProcessor structuredProcessor = new StructuredPaymentProcessor(balanceService,
+                cardValidationService, expirationService, pinValidationService, merchantValidationService);
         long structuredStart = System.currentTimeMillis();
         structuredProcessor.processTransaction(request);
         long structuredTime = System.currentTimeMillis() - structuredStart;

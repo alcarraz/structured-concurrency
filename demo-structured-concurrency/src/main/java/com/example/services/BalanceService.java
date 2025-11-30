@@ -25,8 +25,7 @@ import static java.math.BigDecimal.ZERO;
 public class BalanceService implements ValidationService {
     private static final Logger logger = LogManager.getLogger(BalanceService.class);
 
-    @Inject
-    CardRepository cardRepository;
+    private final CardRepository cardRepository;
 
     // Pending transactions by card number (tracks which transactions have locked funds)
     private final ConcurrentHashMap<String, Set<TransactionRequest>> pendingTransactions = new ConcurrentHashMap<>();
@@ -35,6 +34,12 @@ public class BalanceService implements ValidationService {
     private final ConcurrentHashMap<String, Lock> cardLocks = new ConcurrentHashMap<>();
 
     public BalanceService() {
+        this(new CardRepository());
+    }
+
+    @Inject
+    public BalanceService(CardRepository cardRepository) {
+        this.cardRepository = cardRepository;
     }
 
     private Lock getLock(String cardNumber) {

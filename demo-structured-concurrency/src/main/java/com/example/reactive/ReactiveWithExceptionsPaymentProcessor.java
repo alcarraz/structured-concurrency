@@ -39,9 +39,6 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
     private final MerchantValidationService merchantValidationService;
     private final List<ValidationService> cardValidations;
 
-    public ReactiveWithExceptionsPaymentProcessor() {
-        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
-    }
     @Inject
     public ReactiveWithExceptionsPaymentProcessor(
             BalanceService balanceService,

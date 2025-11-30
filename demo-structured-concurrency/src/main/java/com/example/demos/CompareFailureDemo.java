@@ -5,6 +5,12 @@ import com.example.model.TransactionResult;
 import com.example.reactive.ReactivePaymentProcessor;
 import com.example.reactive.BasicReactivePaymentProcessor;
 import com.example.structured.FailFastStructuredPaymentProcessor;
+import com.example.repository.CardRepository;
+import com.example.services.BalanceService;
+import com.example.services.CardValidationService;
+import com.example.services.ExpirationService;
+import com.example.services.MerchantValidationService;
+import com.example.services.PinValidationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,19 +29,30 @@ public class CompareFailureDemo {
     private static final Logger logger = LogManager.getLogger(CompareFailureDemo.class);
 
     public void main() {
+        // Create CardRepository first
+        CardRepository cardRepository = new CardRepository();
+
+        // Create services (passing cardRepository to BalanceService)
+        BalanceService balanceService = new BalanceService(cardRepository);
+        CardValidationService cardValidationService = new CardValidationService();
+        ExpirationService expirationService = new ExpirationService();
+        PinValidationService pinValidationService = new PinValidationService();
+        MerchantValidationService merchantValidationService = new MerchantValidationService();
+
         logger.info("💥 Running EARLY FAILURE BEHAVIOR COMPARISON Demo");
         logger.info("════════════════════════════════════════════════");
         logger.info("⚠️  Using EXPIRED CARD scenario to demonstrate early failure handling\n");
 
         // Use expired card request to trigger early failure
         TransactionRequest expiredCardRequest = new TransactionRequest(
-                "5555-4444-3333-2222", "2312", "9876",  // December 2023 (expired)
+                "5555-4444-3333-2222", "1223", "9876",  // December 2023 (expired)
             new BigDecimal("75.00"), "Failure Comparison Test"
         );
 
         logger.info("🔄 1️⃣  REACTIVE APPROACH (CompletableFuture):");
 
-        ReactivePaymentProcessor reactiveProcessor = new BasicReactivePaymentProcessor();
+        ReactivePaymentProcessor reactiveProcessor = new BasicReactivePaymentProcessor(balanceService,
+                cardValidationService, expirationService, pinValidationService, merchantValidationService);
         long reactiveStart = System.currentTimeMillis();
         long reactiveTime;
         try {
@@ -52,7 +69,8 @@ public class CompareFailureDemo {
 
         logger.info("\n🚀 2️⃣  STRUCTURED CONCURRENCY APPROACH:");
 
-        FailFastStructuredPaymentProcessor structuredProcessor = new FailFastStructuredPaymentProcessor();
+        FailFastStructuredPaymentProcessor structuredProcessor = new FailFastStructuredPaymentProcessor(balanceService,
+                cardValidationService, expirationService, pinValidationService, merchantValidationService);
         long structuredStart = System.currentTimeMillis();
         long structuredTime;
         try {

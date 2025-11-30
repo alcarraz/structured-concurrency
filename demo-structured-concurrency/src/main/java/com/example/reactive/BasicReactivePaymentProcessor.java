@@ -28,10 +28,7 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
     private final CardValidationService cardValidationService;
     private final MerchantValidationService merchantValidationService;
     private final List<ValidationService> cardValidations;
-    
-    public BasicReactivePaymentProcessor() {
-        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
-    }
+
     @Inject
     public BasicReactivePaymentProcessor(
             BalanceService balanceService,
@@ -80,9 +77,6 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
                     .orElse(ValidationResult.success("All card validations passed"));
 
             });
-
-        // Group top-level validations
-        List<CompletableFuture<ValidationResult>> topLevelValidations = List.of(merchantValidation, consumerValidation);
 
         // Wait for BOTH parallel paths (merchant + complete consumer flow)
         return CompletableFuture.allOf(merchantValidation, consumerValidation)

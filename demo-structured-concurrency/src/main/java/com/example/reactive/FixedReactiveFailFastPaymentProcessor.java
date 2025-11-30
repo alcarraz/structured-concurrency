@@ -37,9 +37,6 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
     private final MerchantValidationService merchantValidationService;
     private final List<ValidationService> cardValidations;
 
-    public FixedReactiveFailFastPaymentProcessor() {
-        this(new BalanceService(), new CardValidationService(), new ExpirationService(), new PinValidationService(), new MerchantValidationService());
-    }
     @Inject
     public FixedReactiveFailFastPaymentProcessor(
             BalanceService balanceService,
