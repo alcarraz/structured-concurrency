@@ -61,7 +61,7 @@ public class ReactiveDemo {
         logger.info("═══════════════════════════════════════════");
 
         //Simulate failure when trying to demo fail fast behavior.
-        String expDate = (processorType == Type.BASIC) ? "2512" : "2312";
+        String expDate = (processorType == Type.BASIC) ? "1225" : "1223";
 
         // Valid transaction
         TransactionRequest validRequest = new TransactionRequest(

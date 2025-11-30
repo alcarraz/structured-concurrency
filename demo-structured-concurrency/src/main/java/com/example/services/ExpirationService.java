@@ -4,6 +4,9 @@ import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -11,6 +14,7 @@ import java.time.format.DateTimeParseException;
 @ApplicationScoped
 public class ExpirationService implements ValidationService {
 
+    Logger logger = LogManager.getLogger();
     @Override
     public ValidationResult validate(TransactionRequest request) {
         DemoUtil.simulateNetworkDelay(200);
@@ -23,9 +27,7 @@ public class ExpirationService implements ValidationService {
                 return ValidationResult.failure("Expiration Check: Invalid date format");
             }
 
-            String month = expirationDate.substring(0, 2);
-            String year = "20" + expirationDate.substring(2, 4);
-            YearMonth cardExpiry = YearMonth.parse(year + "-" + month, DateTimeFormatter.ofPattern("yyyy-MM"));
+            YearMonth cardExpiry = YearMonth.parse(expirationDate, DateTimeFormatter.ofPattern("MMyy"));
             YearMonth currentMonth = YearMonth.now();
 
             if (cardExpiry.isBefore(currentMonth)) {
@@ -35,6 +37,7 @@ public class ExpirationService implements ValidationService {
             return ValidationResult.success("Expiration Check: Validation successful");
 
         } catch (DateTimeParseException e) {
+            logger.error("Invalid date format", e);
             return ValidationResult.failure("Expiration Check: Invalid date format");
         }
     }
