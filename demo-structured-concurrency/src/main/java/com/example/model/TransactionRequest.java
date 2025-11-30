@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 public record TransactionRequest(
     String cardNumber,
-    String expirationDate, // YYMM format (e.g., "1225" for December 2025)
+    String expirationDate, // MMYY format (e.g., "1225" for December 2025)
     String pin,
     BigDecimal amount,
     String merchant,

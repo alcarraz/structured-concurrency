@@ -33,7 +33,7 @@
 
         .grid {
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: 600px 1fr;
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -287,23 +287,182 @@
             font-weight: 600;
             margin-bottom: 12px;
         }
+
+        .card-item {
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .card-item.selected {
+            background: #e7f3ff;
+            border-left-color: #28a745;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .card-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-item-number {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .card-item-balance {
+            font-size: 1em;
+            font-weight: 700;
+            color: #28a745;
+        }
+
+        .card-item-description {
+            font-size: 0.85em;
+            color: #666;
+            font-style: italic;
+            margin-top: -4px;
+        }
+
+        .card-item-footer {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-use-card {
+            background: #17a2b8;
+            color: white;
+            padding: 6px 16px;
+            font-size: 0.9em;
+        }
+
+        .btn-use-card:hover {
+            background: #138496;
+        }
+
+        /* Edit mode state */
+        .card-item.edit-mode {
+            background: #fff9e6;
+            border-left-color: #ffc107;
+        }
+
+        /* Form within card */
+        .card-item-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-item-form .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Inline form fields */
+        .card-item-form input,
+        .card-item-form textarea {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9em;
+            transition: border-color 0.3s;
+        }
+
+        .card-item-form input:focus,
+        .card-item-form textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .card-item-form label {
+            display: block;
+            margin-bottom: 4px;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+
+        .card-item-form textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        /* Action buttons container */
+        .card-item-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        /* Small action buttons */
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.85em;
+        }
+
+        /* Panel header with New Card button */
+        .card-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-panel-header h2 {
+            margin: 0;
+        }
+
+        /* Delete confirmation state */
+        .card-item.confirm-delete {
+            background: #ffe6e6;
+            border-left-color: #dc3545;
+        }
+
+        .delete-confirmation {
+            padding: 12px;
+            text-align: center;
+        }
+
+        .delete-confirmation p {
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #721c24;
+        }
+
+        /* Clickable card (not in edit mode) */
+        .card-item:not(.edit-mode):not(.confirm-delete) {
+            cursor: pointer;
+        }
+
+        .card-item:not(.edit-mode):not(.confirm-delete):hover {
+            background: #f0f0f0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 Structured Concurrency Demo - Java 25</h1>
-        <div style="text-align: center; margin-bottom: 20px;">
-            <a href="cards.html" style="color: white; text-decoration: none; font-weight: 600; font-size: 1.1em; transition: opacity 0.3s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">📇 Gestionar Tarjetas</a>
-        </div>
 
         <div class="grid">
-            <!-- Panel de Balances -->
+            <!-- Panel de Tarjetas -->
             <div class="card">
-                <h2>💳 Balances de Tarjetas</h2>
-                <div id="balances">
+                <div class="card-panel-header">
+                    <h2>💳 Tarjetas</h2>
+                    <button class="btn btn-primary btn-sm" onclick="createNewCard()">+ Nueva</button>
+                </div>
+                <div id="cards">
                     <div class="loading">
                         <div class="spinner"></div>
-                        Cargando balances...
+                        Cargando tarjetas...
                     </div>
                 </div>
             </div>
@@ -412,6 +571,15 @@
     <script>
         const API_BASE = 'http://localhost:8080/api';
 
+        // Cache cards for useCard() function and track selected card
+        let cardsCache = [];
+        let selectedCardNumber = null;
+
+        // Editing state
+        let editingCardNumber = null;
+        let deletingCardNumber = null;
+        let isCreatingNew = false;
+
         // Escenarios precargados
         const scenarios = {
             valid: {
@@ -454,25 +622,316 @@
             document.getElementById('merchant').value = scenario.merchant;
         }
 
-        // Cargar balances
-        async function loadBalances() {
+        // Cargar tarjetas with multi-state support
+        async function loadCards() {
             try {
-                const response = await fetch(`${API_BASE}/balance`);
-                const balances = await response.json();
+                // If we're creating new card, use cached data (which has the new temp card)
+                let cards;
+                if (isCreatingNew) {
+                    // Use cardsCache which has the new card prepended
+                    cards = cardsCache;
+                } else {
+                    // Fetch fresh data from server
+                    const response = await fetch(`${API_BASE}/cards`);
+                    cards = await response.json();
+                    cardsCache = cards;
+                }
 
-                const html = Object.entries(balances).map(([cardNumber, balance]) => `
-                    <div class="balance-item">
-                        <span class="card-number">💳 ${cardNumber.slice(-4)}</span>
-                        <span class="balance">$${balance.toFixed(2)}</span>
-                    </div>
-                `).join('');
+                const cardsToRender = cards;
 
-                document.getElementById('balances').innerHTML = html;
+                if (cardsToRender.length === 0) {
+                    document.getElementById('cards').innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #999;">
+                            <p>No hay tarjetas disponibles</p>
+                            <p>Haz clic en "+ Nueva" para crear una</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const html = cardsToRender.map(card => {
+                    // Check if this card is in edit mode
+                    if (editingCardNumber === card.cardNumber) {
+                        return renderEditMode(card);
+                    }
+                    // Check if this card is in delete confirmation
+                    if (deletingCardNumber === card.cardNumber) {
+                        return renderDeleteConfirmation(card);
+                    }
+                    // Default view mode
+                    return renderViewMode(card);
+                }).join('');
+
+                document.getElementById('cards').innerHTML = html;
             } catch (error) {
-                document.getElementById('balances').innerHTML = `
-                    <div class="error">Error cargando balances: ${error.message}</div>
+                document.getElementById('cards').innerHTML = `
+                    <div class="error">Error cargando tarjetas: ${error.message}</div>
                 `;
             }
+        }
+
+        // Render card in view mode
+        function renderViewMode(card) {
+            const bin = card.cardNumber.substring(0, 4);
+            const last4 = card.cardNumber.slice(-4);
+            const displayNumber = `${bin}...${last4}`;
+            const selectedClass = selectedCardNumber === card.cardNumber ? 'selected' : '';
+
+            return `
+                <div class="card-item ${selectedClass}" data-card-number="${card.cardNumber}"
+                     onclick="enterEditMode('${card.cardNumber}')">
+                    <div class="card-item-header">
+                        <span class="card-item-number">💳 ${displayNumber}</span>
+                        <span class="card-item-balance">$${parseFloat(card.balance).toFixed(2)}</span>
+                    </div>
+                    ${card.description ? `
+                        <div class="card-item-description">${card.description}</div>
+                    ` : ''}
+                    <div class="card-item-actions">
+                        <button class="btn btn-info btn-sm" onclick="event.stopPropagation(); useCard('${card.cardNumber}')">Usar</button>
+                        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); cloneCard('${card.cardNumber}')">Clonar</button>
+                        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); confirmDelete('${card.cardNumber}')">Borrar</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render card in edit mode
+        function renderEditMode(card) {
+            return `
+                <div class="card-item edit-mode" data-card-number="${card.cardNumber}">
+                    <div class="card-item-form">
+                        <div class="form-group">
+                            <label>Número de Tarjeta</label>
+                            <input type="text" id="edit-cardNumber" value="${card.cardNumber}" ${!isCreatingNew ? 'readonly' : ''} required>
+                        </div>
+                        <div class="form-group">
+                            <label>Expiración (MMYY)</label>
+                            <input type="text" id="edit-expiration" value="${card.expirationDate}" maxlength="4" required>
+                        </div>
+                        <div class="form-group">
+                            <label>PIN</label>
+                            <input type="text" id="edit-pin" value="${card.pin}" maxlength="4" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Balance</label>
+                            <input type="number" id="edit-balance" value="${card.balance}" step="0.01" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Descripción</label>
+                            <textarea id="edit-description" rows="2">${card.description || ''}</textarea>
+                        </div>
+                    </div>
+                    <div class="card-item-actions">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="cancelEdit()">Cancelar</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="saveCard('${card.cardNumber}')">Guardar</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render card in delete confirmation mode
+        function renderDeleteConfirmation(card) {
+            const bin = card.cardNumber.substring(0, 4);
+            const last4 = card.cardNumber.slice(-4);
+            const displayNumber = `${bin}...${last4}`;
+
+            return `
+                <div class="card-item confirm-delete" data-card-number="${card.cardNumber}">
+                    <div class="delete-confirmation">
+                        <p>¿Eliminar tarjeta ${displayNumber}?</p>
+                        <div class="card-item-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="cancelDelete()">Cancelar</button>
+                            <button class="btn btn-danger btn-sm" onclick="executeDelete('${card.cardNumber}')">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Enter edit mode for a card
+        function enterEditMode(cardNumber) {
+            // Cancel any existing edit
+            if (editingCardNumber) {
+                cancelEdit();
+            }
+            editingCardNumber = cardNumber;
+            deletingCardNumber = null;
+            isCreatingNew = false;
+            loadCards();
+        }
+
+        // Cancel edit mode
+        function cancelEdit() {
+            editingCardNumber = null;
+            isCreatingNew = false;
+            loadCards();
+        }
+
+        // Save card changes
+        async function saveCard(originalCardNumber) {
+            // Build request data - split POST/PUT logic
+            let cardData;
+
+            if (isCreatingNew) {
+                // POST: Include card number (new card creation)
+                cardData = {
+                    cardNumber: document.getElementById('edit-cardNumber').value,
+                    expirationDate: document.getElementById('edit-expiration').value,
+                    pin: document.getElementById('edit-pin').value,
+                    balance: parseFloat(document.getElementById('edit-balance').value),
+                    description: document.getElementById('edit-description').value || null
+                };
+            } else {
+                // PUT: Exclude card number (immutable, use path param only)
+                cardData = {
+                    expirationDate: document.getElementById('edit-expiration').value,
+                    pin: document.getElementById('edit-pin').value,
+                    balance: parseFloat(document.getElementById('edit-balance').value),
+                    description: document.getElementById('edit-description').value || null
+                };
+            }
+
+            try {
+                let response;
+                if (isCreatingNew) {
+                    // Create new card
+                    response = await fetch(`${API_BASE}/cards`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(cardData)
+                    });
+                } else {
+                    // Update existing card - use path param for card number
+                    response = await fetch(`${API_BASE}/cards/${originalCardNumber}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(cardData)
+                    });
+                }
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+
+                editingCardNumber = null;
+                isCreatingNew = false;
+                loadCards();
+            } catch (error) {
+                alert('Error al guardar: ' + error.message);
+                console.error('Save error:', error);
+            }
+        }
+
+        // Confirm delete
+        function confirmDelete(cardNumber) {
+            deletingCardNumber = cardNumber;
+            editingCardNumber = null;
+            loadCards();
+        }
+
+        // Cancel delete
+        function cancelDelete() {
+            deletingCardNumber = null;
+            loadCards();
+        }
+
+        // Execute delete
+        async function executeDelete(cardNumber) {
+            try {
+                const response = await fetch(`${API_BASE}/cards/${cardNumber}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error al eliminar la tarjeta');
+                }
+
+                deletingCardNumber = null;
+                loadCards();
+            } catch (error) {
+                alert('Error al eliminar: ' + error.message);
+            }
+        }
+
+        // Clone card
+        async function cloneCard(cardNumber) {
+            const card = cardsCache.find(c => c.cardNumber === cardNumber);
+            if (!card) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/cards/${cardNumber}/clone?newCardNumber=${generateNewCardNumber()}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error al clonar');
+                }
+
+                loadCards();
+            } catch (error) {
+                alert('Error al clonar: ' + error.message);
+            }
+        }
+
+        // Generate new card number
+        function generateNewCardNumber() {
+            const timestamp = Date.now().toString().slice(-8);
+            return `9999-0000-${timestamp.slice(0, 4)}-${timestamp.slice(4)}`;
+        }
+
+        // Create new card
+        function createNewCard() {
+            const newCard = {
+                cardNumber: generateNewCardNumber(),
+                expirationDate: '1225',
+                pin: '0000',
+                balance: 1000.00,
+                description: ''
+            };
+
+            // Save the new card before changing state
+            const tempNewCard = newCard;
+
+            editingCardNumber = newCard.cardNumber;
+            deletingCardNumber = null;
+            isCreatingNew = true;
+
+            // Prepend the new card temporarily to cardsCache
+            cardsCache.unshift(tempNewCard);
+
+            loadCards();
+        }
+
+        // Usar tarjeta para llenar el formulario
+        function useCard(cardNumber) {
+            const card = cardsCache.find(c => c.cardNumber === cardNumber);
+            if (!card) {
+                console.error('Card not found:', cardNumber);
+                return;
+            }
+
+            // Update selected card state
+            selectedCardNumber = cardNumber;
+
+            // Update visual selection (remove from all, add to clicked)
+            document.querySelectorAll('.card-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            const selectedItem = document.querySelector(`[data-card-number="${cardNumber}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+            }
+
+            // Populate transaction form with card data ONLY
+            document.getElementById('cardNumber').value = card.cardNumber;
+            document.getElementById('expirationDate').value = card.expirationDate;
+            document.getElementById('pin').value = card.pin;
+
+            // Clear amount and merchant (user requirement: don't pre-fill)
+            document.getElementById('amount').value = '';
+            document.getElementById('merchant').value = '';
         }
 
         // Procesar transacción
@@ -591,8 +1050,8 @@
                 displayResult('structuredResults', structuredResult, structuredVersion);
                 displayImprovement(reactiveResult.processingTimeMs, structuredResult.processingTimeMs, reactiveVersion, structuredVersion);
 
-                // Recargar balances
-                setTimeout(loadBalances, 500);
+                // Recargar tarjetas
+                setTimeout(loadCards, 500);
             } catch (error) {
                 document.getElementById('reactiveResults').innerHTML = `
                     <div class="error">Error: ${error.message}</div>
@@ -603,11 +1062,11 @@
             }
         });
 
-        // Cargar balances al inicio
-        loadBalances();
+        // Cargar tarjetas al inicio
+        loadCards();
 
-        // Recargar balances cada 5 segundos
-        setInterval(loadBalances, 5000);
+        // Recargar tarjetas cada 5 segundos
+        setInterval(loadCards, 5000);
     </script>
 </body>
 </html>

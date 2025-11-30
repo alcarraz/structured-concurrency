@@ -18,13 +18,13 @@ public class ExpirationService implements ValidationService {
         String expirationDate = request.expirationDate();
 
         try {
-            // Parse YYMM format (e.g., "1225" for December 2025)
+            // Parse MMYY format (e.g., "1225" for December 2025)
             if (expirationDate.length() != 4) {
                 return ValidationResult.failure("Expiration Check: Invalid date format");
             }
 
-            String year = "20" + expirationDate.substring(0, 2);
-            String month = expirationDate.substring(2, 4);
+            String month = expirationDate.substring(0, 2);
+            String year = "20" + expirationDate.substring(2, 4);
             YearMonth cardExpiry = YearMonth.parse(year + "-" + month, DateTimeFormatter.ofPattern("yyyy-MM"));
             YearMonth currentMonth = YearMonth.now();
 

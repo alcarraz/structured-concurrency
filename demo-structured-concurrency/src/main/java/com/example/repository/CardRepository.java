@@ -24,7 +24,7 @@ public class CardRepository {
     private void initializeDemoCards() {
         cards.put("1234-5678-9012-3456", new Card(
             "1234-5678-9012-3456",
-            "2512",
+            "1225",
             "1234",
             new BigDecimal("5000"),
             "Valid card for success scenarios"
@@ -32,7 +32,7 @@ public class CardRepository {
 
         cards.put("9876-5432-1098-7654", new Card(
             "9876-5432-1098-7654",
-            "2512",
+            "1225",
             "5678",
             new BigDecimal("500"),
             "Low balance card"
@@ -58,8 +58,8 @@ public class CardRepository {
     }
 
     public Card save(Card card) {
-        cards.put(card.getCardNumber(), card);
-        logger.info("Card saved: {}", card.getCardNumber());
+        cards.put(card.cardNumber(), card);
+        logger.info("Card saved: {}", card.cardNumber());
         return card;
     }
 
@@ -77,10 +77,10 @@ public class CardRepository {
         Card originalCard = original.get();
         Card clonedCard = new Card(
             newCardNumber,
-            originalCard.getExpirationDate(),
-            originalCard.getPin(),
-            originalCard.getBalance(),
-            originalCard.getDescription()
+            originalCard.expirationDate(),
+            originalCard.pin(),
+            originalCard.balance(),
+            originalCard.description()
         );
 
         save(clonedCard);

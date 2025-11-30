@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.util.List;
+import java.util.Optional;
 
 @Path("/api/cards")
 @Produces(MediaType.APPLICATION_JSON)
@@ -32,9 +33,9 @@ public class CardResource {
 
     @POST
     public Response createCard(Card card) {
-        if (cardRepository.exists(card.getCardNumber())) {
+        if (cardRepository.exists(card.cardNumber())) {
             return Response.status(Response.Status.CONFLICT)
-                    .entity("Card already exists: " + card.getCardNumber())
+                    .entity("Card already exists: " + card.cardNumber())
                     .build();
         }
         Card saved = cardRepository.save(card);
@@ -43,12 +44,32 @@ public class CardResource {
 
     @PUT
     @Path("/{cardNumber}")
-    public Response updateCard(@PathParam("cardNumber") String cardNumber, Card card) {
-        if (!cardRepository.exists(cardNumber)) {
+    public Response updateCard(@PathParam("cardNumber") String cardNumber, Card updatedCard) {
+        // Validate card exists
+        Optional<Card> existingCardOpt = cardRepository.findByCardNumber(cardNumber);
+        if (existingCardOpt.isEmpty()) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        Card updated = cardRepository.save(card);
-        return Response.ok(updated).build();
+
+        // Enforce immutability: reject if body tries to change card number
+        if (updatedCard.cardNumber() != null && !updatedCard.cardNumber().equals(cardNumber)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Card number cannot be changed. Expected: " + cardNumber +
+                            ", Received: " + updatedCard.cardNumber())
+                    .build();
+        }
+
+        // Create updated card preserving the original card number (copy-on-write)
+        Card cardWithCorrectNumber = new Card(
+                cardNumber,
+                updatedCard.expirationDate(),
+                updatedCard.pin(),
+                updatedCard.balance(),
+                updatedCard.description()
+        );
+
+        Card saved = cardRepository.save(cardWithCorrectNumber);
+        return Response.ok(saved).build();
     }
 
     @DELETE
