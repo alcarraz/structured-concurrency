@@ -18,6 +18,8 @@ import java.math.BigDecimal;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import static com.example.fixtures.DemoCards.*;
+
 /**
  * Unified Structured Concurrency Demo
  * <p>
@@ -78,11 +80,11 @@ public class StructuredDemo {
     private TransactionRequest createTestRequest(Type type) {
         return switch (type) {
             case NORMAL -> new TransactionRequest(
-                    "4532-1234-5678-9012", "1225", "1234",  // December 2025 (valid)
+                    VALID_CARD_NUMBER, VALID_CARD_EXPIRATION, VALID_CARD_PIN,
                 new BigDecimal("100.00"), "Coffee Shop"
             );
-            case FAIL_FAST -> new TransactionRequest(  // fail-fast case
-                    "5555-4444-3333-2222", "1225", "9876",  // December 2023 (expired)
+            case FAIL_FAST -> new TransactionRequest(
+                    EXPIRED_CARD_NUMBER, EXPIRED_CARD_EXPIRATION, EXPIRED_CARD_PIN,
                 new BigDecimal("75.00"), "Online Store"
             );
         };

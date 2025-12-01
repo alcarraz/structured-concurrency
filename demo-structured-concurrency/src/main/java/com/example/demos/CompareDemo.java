@@ -16,6 +16,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 
+import static com.example.fixtures.DemoCards.*;
+
 /**
  * Performance Comparison Demo
  * <p>
@@ -43,7 +45,7 @@ public class CompareDemo {
         logger.info("════════════════════════════════════════");
 
         TransactionRequest request = new TransactionRequest(
-                "4532-1234-5678-9012", "1225", "1234",  // December 2025 (valid)
+                VALID_CARD_NUMBER, VALID_CARD_EXPIRATION, VALID_CARD_PIN,
             new BigDecimal("100.00"), "Comparison Test"
         );
 

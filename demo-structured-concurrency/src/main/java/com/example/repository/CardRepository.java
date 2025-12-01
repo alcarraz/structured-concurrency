@@ -1,51 +1,29 @@
 package com.example.repository;
 
+import com.example.fixtures.DemoCards;
 import com.example.model.Card;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @ApplicationScoped
 public class CardRepository {
     private static final Logger logger = LogManager.getLogger(CardRepository.class);
     private final ConcurrentHashMap<String, Card> cards = new ConcurrentHashMap<>();
-    private final AtomicInteger cardNumberCounter = new AtomicInteger(1000);
 
     public CardRepository() {
         initializeDemoCards();
     }
 
     private void initializeDemoCards() {
-        cards.put("1234-5678-9012-3456", new Card(
-            "1234-5678-9012-3456",
-            "1225",
-            "1234",
-            new BigDecimal("5000"),
-            "Valid card for success scenarios"
-        ));
-
-        cards.put("9876-5432-1098-7654", new Card(
-            "9876-5432-1098-7654",
-            "1225",
-            "5678",
-            new BigDecimal("500"),
-            "Low balance card"
-        ));
-
-        cards.put("1111-2222-3333-4444", new Card(
-            "1111-2222-3333-4444",
-            "1220",
-            "9999",
-            new BigDecimal("100"),
-            "Expired card for fail-fast demos"
-        ));
-
+        // Initialize with demo cards from DemoCards fixture
+        for (Card card : DemoCards.getAllCards()) {
+            cards.put(card.cardNumber(), card);
+        }
         logger.info("CardRepository initialized with {} demo cards", cards.size());
     }
 

@@ -19,6 +19,8 @@ import java.math.BigDecimal;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import static com.example.fixtures.DemoCards.*;
+
 /**
  * Unified Reactive Programming Demo
  * <p>
@@ -61,11 +63,13 @@ public class ReactiveDemo {
         logger.info("═══════════════════════════════════════════");
 
         //Simulate failure when trying to demo fail fast behavior.
-        String expDate = (processorType == Type.BASIC) ? "1225" : "1223";
+        String expDate = (processorType == Type.BASIC) ? VALID_CARD_EXPIRATION : EXPIRED_CARD_EXPIRATION;
+        String cardNumber = (processorType == Type.BASIC) ? VALID_CARD_NUMBER : EXPIRED_CARD_NUMBER;
+        String pin = (processorType == Type.BASIC) ? VALID_CARD_PIN : EXPIRED_CARD_PIN;
 
         // Valid transaction
         TransactionRequest validRequest = new TransactionRequest(
-                "4532-1234-5678-9012", expDate, "1225",  // December 2025 (valid)
+                cardNumber, expDate, pin,
             new BigDecimal("100.00"), "Coffee Shop"
         );
 

@@ -15,6 +15,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 
+import static com.example.fixtures.DemoCards.*;
+
 /**
  * Balance Locking/Unlocking Demo
  * <p>
@@ -41,13 +43,13 @@ public class BalanceLockingDemo {
 
         // Test 1: Successful transaction - lock then transfer
         logger.info("📝 Test 1: SUCCESSFUL TRANSACTION");
-        logger.info("   Card: 1234-5678-9012-3456 (Balance: 5000)");
+        logger.info("   Card: " + LOCKING_CARD_NUMBER + " (Balance: " + LOCKING_CARD_BALANCE + ")");
         logger.info("   Amount: 100");
         logger.info("   Merchant: TestMerchant");
         logger.info("");
 
         TransactionRequest successRequest = new TransactionRequest(
-            "1234-5678-9012-3456", "1225", "1234",
+            LOCKING_CARD_NUMBER, LOCKING_CARD_EXPIRATION, LOCKING_CARD_PIN,
             new BigDecimal("100.00"), "TestMerchant"
         );
 
@@ -70,13 +72,13 @@ public class BalanceLockingDemo {
 
         // Test 2: Failed transaction - lock then unlock
         logger.info("📝 Test 2: FAILED TRANSACTION (Blocked Merchant)");
-        logger.info("   Card: 1234-5678-9012-3456 (Balance: ~4900 after test 1)");
+        logger.info("   Card: " + LOCKING_CARD_NUMBER + " (Balance: ~4900 after test 1)");
         logger.info("   Amount: 200");
         logger.info("   Merchant: BLOCKED_Merchant (will fail validation)");
         logger.info("");
 
         TransactionRequest failedRequest = new TransactionRequest(
-            "1234-5678-9012-3456", "1225", "1234",
+            LOCKING_CARD_NUMBER, LOCKING_CARD_EXPIRATION, LOCKING_CARD_PIN,
             new BigDecimal("200.00"), "BLOCKED_Merchant"
         );
 
@@ -99,13 +101,13 @@ public class BalanceLockingDemo {
 
         // Test 3: Fail-fast with balance lock/unlock
         logger.info("📝 Test 3: FAIL-FAST (PIN failure)");
-        logger.info("   Card: 9876-5432-1098-7654 (Balance: 500)");
+        logger.info("   Card: " + LOW_BALANCE_CARD_NUMBER + " (Balance: " + LOW_BALANCE_CARD_BALANCE + ")");
         logger.info("   Amount: 50");
         logger.info("   PIN: 0000 (invalid - will fail)");
         logger.info("");
 
         TransactionRequest failFastRequest = new TransactionRequest(
-            "9876-5432-1098-7654", "1225", "0000",
+            LOW_BALANCE_CARD_NUMBER, LOW_BALANCE_CARD_EXPIRATION, "0000",
             new BigDecimal("50.00"), "TestMerchant"
         );
 

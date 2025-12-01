@@ -9,6 +9,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 
+import static com.example.fixtures.DemoCards.*;
+
 /**
  * Scoped Values Demo (STABLE in Java 25!)
  * <p>
@@ -29,7 +31,7 @@ public class ScopedValuesDemo {
 
         // Valid transaction - request data will be accessible via ScopedValue
         TransactionRequest validRequest = new TransactionRequest(
-                "4111-1111-1111-1111", "1225", "5555",  // December 2025 (valid)
+                SCOPED_CARD_NUMBER, SCOPED_CARD_EXPIRATION, SCOPED_CARD_PIN,
             new BigDecimal("250.00"), "Restaurant"
         );
 

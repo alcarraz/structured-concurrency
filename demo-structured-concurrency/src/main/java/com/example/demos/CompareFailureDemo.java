@@ -16,6 +16,8 @@ import org.apache.logging.log4j.Logger;
 
 import java.math.BigDecimal;
 
+import static com.example.fixtures.DemoCards.*;
+
 /**
  * Early Failure Behavior Comparison Demo
  * <p>
@@ -45,7 +47,7 @@ public class CompareFailureDemo {
 
         // Use expired card request to trigger early failure
         TransactionRequest expiredCardRequest = new TransactionRequest(
-                "5555-4444-3333-2222", "1223", "9876",  // December 2023 (expired)
+                EXPIRED_CARD_NUMBER, EXPIRED_CARD_EXPIRATION, EXPIRED_CARD_PIN,
             new BigDecimal("75.00"), "Failure Comparison Test"
         );
 
