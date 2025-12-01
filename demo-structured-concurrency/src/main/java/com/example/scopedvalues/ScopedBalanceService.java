@@ -12,7 +12,6 @@ public class ScopedBalanceService {
     public ValidationResult validate() {
         // Access the scoped value directly - no parameter passing needed!
         TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
-        String cardNumber = request.cardNumber();
 
         DemoUtil.simulateNetworkDelay(500);
 
@@ -30,7 +29,7 @@ public class ScopedBalanceService {
 
         DemoUtil.simulateNetworkDelay(300);
 
-        logger.info("💳 Debiting " + request.amount() + " from card ***" + cardNumber.substring(cardNumber.length() - 4));
+        logger.info("💳 Debiting {} from card ***{}", request.amount(), cardNumber.substring(cardNumber.length() - 4));
         return ValidationResult.success("Balance Debit: Amount successfully debited");
     }
 

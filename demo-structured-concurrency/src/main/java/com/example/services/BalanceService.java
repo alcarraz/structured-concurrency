@@ -74,7 +74,7 @@ public class BalanceService implements ValidationService {
             // Add transaction to pending set
             lockAmount(cardNumber, request);
 
-            logger.info("🔒 Locked " + amount + " on card " + cardNumber.substring(cardNumber.length() - 4));
+            logger.info("🔒 Locked {} on card {}", amount, cardNumber.substring(cardNumber.length() - 4));
             return ValidationResult.success("Balance Check: Validation successful (locked " + amount + ")");
         } finally {
             lock.unlock();
@@ -94,7 +94,7 @@ public class BalanceService implements ValidationService {
         lock.lock();
         try {
             if (releaseAmount(cardNumber, request)) {
-                logger.info("🔓 Unlocked " + amount + " on card " + cardNumber.substring(cardNumber.length() - 4));
+                logger.info("🔓 Unlocked {} on card {}", amount, cardNumber.substring(cardNumber.length() - 4));
             }
         } finally {
             lock.unlock();
@@ -138,7 +138,7 @@ public class BalanceService implements ValidationService {
 
             // now we should put the money in the merchant account
 
-            logger.info("💸 Transferring " + amount + " from card " + cardNumber.substring(cardNumber.length() - 4) + " to " + merchant);
+            logger.info("💸 Transferring {} from card {} to {}", amount, cardNumber.substring(cardNumber.length() - 4), merchant);
         } finally {
             lock.unlock();
         }

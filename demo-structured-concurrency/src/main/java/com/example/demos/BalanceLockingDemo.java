@@ -43,7 +43,7 @@ public class BalanceLockingDemo {
 
         // Test 1: Successful transaction - lock then transfer
         logger.info("📝 Test 1: SUCCESSFUL TRANSACTION");
-        logger.info("   Card: " + LOCKING_CARD_NUMBER + " (Balance: " + LOCKING_CARD_BALANCE + ")");
+        logger.info("   Card: {} (Balance: {})", LOCKING_CARD_NUMBER, LOCKING_CARD_BALANCE);
         logger.info("   Amount: 100");
         logger.info("   Merchant: TestMerchant");
         logger.info("");
@@ -58,12 +58,12 @@ public class BalanceLockingDemo {
         try {
             TransactionResult result = processor.processTransaction(successRequest);
             logger.info("");
-            logger.info("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
+            logger.info("✅ Result: {}", result.success() ? "SUCCESS" : "FAILED");
             if (!result.success()) {
-                logger.info("   Reason: " + result.message());
+                logger.info("   Reason: {}", result.message());
             }
         } catch (Exception e) {
-            logger.info("❌ Error: " + e.getMessage());
+            logger.info("❌ Error: {}", e.getMessage());
         }
 
         logger.info("");
@@ -72,7 +72,7 @@ public class BalanceLockingDemo {
 
         // Test 2: Failed transaction - lock then unlock
         logger.info("📝 Test 2: FAILED TRANSACTION (Blocked Merchant)");
-        logger.info("   Card: " + LOCKING_CARD_NUMBER + " (Balance: ~4900 after test 1)");
+        logger.info("   Card: {} (Balance: ~4900 after test 1)", LOCKING_CARD_NUMBER);
         logger.info("   Amount: 200");
         logger.info("   Merchant: BLOCKED_Merchant (will fail validation)");
         logger.info("");
@@ -87,12 +87,12 @@ public class BalanceLockingDemo {
         try {
             TransactionResult result = processor2.processTransaction(failedRequest);
             logger.info("");
-            logger.info("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
+            logger.info("✅ Result: {}", result.success() ? "SUCCESS" : "FAILED");
             if (!result.success()) {
-                logger.info("   Reason: " + result.message());
+                logger.info("   Reason: {}", result.message());
             }
         } catch (Exception e) {
-            logger.info("❌ Error: " + e.getMessage());
+            logger.info("❌ Error: {}", e.getMessage());
         }
 
         logger.info("");
@@ -101,7 +101,7 @@ public class BalanceLockingDemo {
 
         // Test 3: Fail-fast with balance lock/unlock
         logger.info("📝 Test 3: FAIL-FAST (PIN failure)");
-        logger.info("   Card: " + LOW_BALANCE_CARD_NUMBER + " (Balance: " + LOW_BALANCE_CARD_BALANCE + ")");
+        logger.info("   Card: {} (Balance: {})", LOW_BALANCE_CARD_NUMBER, LOW_BALANCE_CARD_BALANCE);
         logger.info("   Amount: 50");
         logger.info("   PIN: 0000 (invalid - will fail)");
         logger.info("");
@@ -116,12 +116,12 @@ public class BalanceLockingDemo {
         try {
             TransactionResult result = failFastProcessor.processTransaction(failFastRequest);
             logger.info("");
-            logger.info("✅ Result: " + (result.success() ? "SUCCESS" : "FAILED"));
+            logger.info("✅ Result: {}", result.success() ? "SUCCESS" : "FAILED");
             if (!result.success()) {
-                logger.info("   Reason: " + result.message());
+                logger.info("   Reason: {}", result.message());
             }
         } catch (Exception e) {
-            logger.info("❌ Error: " + e.getMessage());
+            logger.info("❌ Error: {}", e.getMessage());
         }
 
         logger.info("");

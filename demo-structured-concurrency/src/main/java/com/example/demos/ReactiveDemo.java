@@ -77,7 +77,7 @@ public class ReactiveDemo {
             TransactionResult result = processor.processTransaction(validRequest).get();
             DemoUtil.printResult(result);
         } catch (Exception e) {
-            logger.error("Error: " + e.getMessage(), e);
+            logger.error("Error: {}", e.getMessage(), e);
         }
     }
 

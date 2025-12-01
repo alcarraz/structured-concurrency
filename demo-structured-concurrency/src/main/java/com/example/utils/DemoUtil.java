@@ -41,16 +41,16 @@ public class DemoUtil {
 
         if (result.success()) {
             logger.info("✅ Status: SUCCESS");
-            logger.info("🆔 Transaction ID: " + result.transactionId());
-            logger.info("💰 Amount: $" + result.amount());
+            logger.info("🆔 Transaction ID: {}", result.transactionId());
+            logger.info("💰 Amount: ${}", result.amount());
         } else {
             logger.info("❌ Status: FAILED");
-            logger.info("💬 Reason: " + result.message());
+            logger.info("💬 Reason: {}", result.message());
         }
 
-        logger.info("⏱️  Processing Time: " + result.processingTimeMs() + "ms");
-        logger.info("📅 Processed At: " + result.processedAt());
+        logger.info("⏱️  Processing Time: {}ms", result.processingTimeMs());
+        logger.info("📅 Processed At: {}", result.processedAt());
 
-        logger.info("\n" + "═".repeat(50) + "\n");
+        logger.info("\n{}\n", "═".repeat(50));
     }
 }

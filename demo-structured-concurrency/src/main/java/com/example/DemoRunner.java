@@ -53,12 +53,12 @@ public class DemoRunner {
                 case "compare-failure" -> new CompareFailureDemo().main();
                 case "balance-locking" -> new BalanceLockingDemo().main();
                 default -> {
-                    logger.info("❌ Unknown demo type: " + demoType);
+                    logger.info("❌ Unknown demo type: {}", demoType);
                     logger.info("Run without arguments to see available options.");
                 }
             }
         } catch (Exception e) {
-            logger.error("💥 Demo failed: " + e.getMessage(), e);
+            logger.error("💥 Demo failed: {}", e.getMessage(), e);
         }
     }
 }

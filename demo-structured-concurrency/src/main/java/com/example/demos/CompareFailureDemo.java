@@ -60,12 +60,12 @@ public class CompareFailureDemo {
         try {
             TransactionResult reactiveResult = reactiveProcessor.processTransaction(expiredCardRequest).get();
             reactiveTime = System.currentTimeMillis() - reactiveStart;
-            logger.info("📊 Reactive completed in: " + reactiveTime + "ms");
+            logger.info("📊 Reactive completed in: {}ms", reactiveTime);
             printComparisonResult("REACTIVE", reactiveResult, reactiveTime);
         } catch (Exception e) {
             reactiveTime = System.currentTimeMillis() - reactiveStart;
-            logger.info("📊 Reactive failed in: " + reactiveTime + "ms");
-            logger.info("❌ Reactive error: " + e.getMessage());
+            logger.info("📊 Reactive failed in: {}ms", reactiveTime);
+            logger.info("❌ Reactive error: {}", e.getMessage());
         }
 
 
@@ -78,28 +78,28 @@ public class CompareFailureDemo {
         try {
             TransactionResult structuredResult = structuredProcessor.processTransaction(expiredCardRequest);
             structuredTime = System.currentTimeMillis() - structuredStart;
-            logger.info("📊 Structured completed in: " + structuredTime + "ms");
+            logger.info("📊 Structured completed in: {}ms", structuredTime);
             printComparisonResult("STRUCTURED", structuredResult, structuredTime);
         } catch (Exception e) {
             structuredTime = System.currentTimeMillis() - structuredStart;
-            logger.info("📊 Structured failed in: " + structuredTime + "ms");
-            logger.info("❌ Structured error: " + e.getMessage());
+            logger.info("📊 Structured failed in: {}ms", structuredTime);
+            logger.info("❌ Structured error: {}", e.getMessage());
         }
         logger.info("\n📊 COMPARISON RESULTS:");
         logger.info("═════════════════════");
-        logger.info(String.format("Reactive Processing Time:   %d ms%n", reactiveTime));
-        logger.info(String.format("Structured Processing Time: %d ms%n", structuredTime));
-        logger.info(String.format("Performance Difference:     %+d ms%n", structuredTime - reactiveTime));
+        logger.info("Reactive Processing Time:   {} ms\n", reactiveTime);
+        logger.info("Structured Processing Time: {} ms\n", structuredTime);
+        logger.info("Performance Difference:     {} ms\n", String.format("%+d", structuredTime - reactiveTime));
 
     }
 
     private void printComparisonResult(String approach, TransactionResult result, long timeMs) {
-        logger.info(String.format("🎯 %s RESULT: %s in %dms%n",
+        logger.info("🎯 {} RESULT: {} in {}ms\n",
             approach,
             result.success() ? "SUCCESS" : "FAILED",
-            timeMs));
+            timeMs);
         if (!result.success()) {
-            logger.info("   💬 Failure reason: " + result.message());
+            logger.info("   💬 Failure reason: {}", result.message());
         }
     }
 }
