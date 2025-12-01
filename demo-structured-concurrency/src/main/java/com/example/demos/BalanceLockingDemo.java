@@ -33,7 +33,7 @@ public class BalanceLockingDemo {
         // Create services (passing cardRepository to BalanceService)
         BalanceService balanceService = new BalanceService(cardRepository);
         CardValidationService cardValidationService = new CardValidationService();
-        ExpirationService expirationService = new ExpirationService();
+        ExpirationService expirationService = new ExpirationService(cardRepository);
         PinValidationService pinValidationService = new PinValidationService();
         MerchantValidationService merchantValidationService = new MerchantValidationService();
 

@@ -33,10 +33,6 @@ public class BalanceService implements ValidationService {
     // Locks per card number for thread-safe operations
     private final ConcurrentHashMap<String, Lock> cardLocks = new ConcurrentHashMap<>();
 
-    public BalanceService() {
-        this(new CardRepository());
-    }
-
     @Inject
     public BalanceService(CardRepository cardRepository) {
         this.cardRepository = cardRepository;
