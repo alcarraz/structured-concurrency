@@ -51,7 +51,7 @@ public class ReactiveDemo {
         BalanceService balanceService = new BalanceService(cardRepository);
         CardValidationService cardValidationService = new CardValidationService();
         ExpirationService expirationService = new ExpirationService(cardRepository);
-        PinValidationService pinValidationService = new PinValidationService();
+        PinValidationService pinValidationService = new PinValidationService(cardRepository);
         MerchantValidationService merchantValidationService = new MerchantValidationService();
 
         Type processorType = getProcessorType(args.length > 0 ? args[0] : "basic");

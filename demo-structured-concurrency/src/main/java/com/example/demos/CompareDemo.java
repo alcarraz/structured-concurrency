@@ -38,7 +38,7 @@ public class CompareDemo {
         BalanceService balanceService = new BalanceService(cardRepository);
         CardValidationService cardValidationService = new CardValidationService();
         ExpirationService expirationService = new ExpirationService(cardRepository);
-        PinValidationService pinValidationService = new PinValidationService();
+        PinValidationService pinValidationService = new PinValidationService(cardRepository);
         MerchantValidationService merchantValidationService = new MerchantValidationService();
 
         logger.info("⚖️  Running PERFORMANCE COMPARISON Demo");

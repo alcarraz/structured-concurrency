@@ -46,7 +46,7 @@ public class StructuredDemo {
         BalanceService balanceService = new BalanceService(cardRepository);
         CardValidationService cardValidationService = new CardValidationService();
         ExpirationService expirationService = new ExpirationService(cardRepository);
-        PinValidationService pinValidationService = new PinValidationService();
+        PinValidationService pinValidationService = new PinValidationService(cardRepository);
         MerchantValidationService merchantValidationService = new MerchantValidationService();
 
         Type processorType = (args.length > 0 && args[0].equalsIgnoreCase("fail-fast")) ? Type.FAIL_FAST : Type.NORMAL;
