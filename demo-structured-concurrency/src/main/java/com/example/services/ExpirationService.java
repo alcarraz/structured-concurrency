@@ -1,5 +1,6 @@
 package com.example.services;
 
+import com.example.constants.ServiceDelays;
 import com.example.model.Card;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
@@ -26,7 +27,7 @@ public class ExpirationService implements CardAwareValidationService {
 
     @Override
     public ValidationResult validate(TransactionRequest request, @NotNull Card card) {
-        DemoUtil.simulateNetworkDelay(200);
+        DemoUtil.simulateNetworkDelay(ServiceDelays.EXPIRATION_VALIDATION_DELAY);
 
         String expirationDate = request.expirationDate();
 

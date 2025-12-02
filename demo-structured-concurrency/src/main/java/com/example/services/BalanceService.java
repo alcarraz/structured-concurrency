@@ -1,5 +1,6 @@
 package com.example.services;
 
+import com.example.constants.ServiceDelays;
 import com.example.model.Card;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
@@ -49,7 +50,7 @@ public class BalanceService implements CardAwareValidationService {
 
     @Override
     public ValidationResult validate(TransactionRequest request, @NotNull Card card) {
-        DemoUtil.simulateNetworkDelay(600);
+        DemoUtil.simulateNetworkDelay(ServiceDelays.BALANCE_VALIDATION_DELAY);
 
         String cardNumber = request.cardNumber();
         BigDecimal amount = request.amount();

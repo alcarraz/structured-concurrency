@@ -1,5 +1,6 @@
 package com.example.services;
 
+import com.example.constants.ServiceDelays;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
 import com.example.utils.DemoUtil;
@@ -10,7 +11,7 @@ public class MerchantValidationService implements ValidationService {
 
     @Override
     public ValidationResult validate(TransactionRequest request) {
-        DemoUtil.simulateNetworkDelay(500);
+        DemoUtil.simulateNetworkDelay(ServiceDelays.MERCHANT_VALIDATION_DELAY);
 
         String merchant = request.merchant();
 

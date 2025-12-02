@@ -1,5 +1,6 @@
 package com.example.services;
 
+import com.example.constants.ServiceDelays;
 import com.example.model.Card;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
@@ -18,7 +19,7 @@ public class PinValidationService implements CardAwareValidationService {
 
     @Override
     public ValidationResult validate(TransactionRequest request, @NotNull Card card) {
-        DemoUtil.simulateNetworkDelay(300);
+        DemoUtil.simulateNetworkDelay(ServiceDelays.PIN_VALIDATION_DELAY);
 
         String requestPin = request.pin();
 

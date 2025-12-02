@@ -1,5 +1,6 @@
 package com.example.services;
 
+import com.example.constants.ServiceDelays;
 import com.example.model.Card;
 import com.example.model.CardValidationResult;
 import com.example.model.TransactionRequest;
@@ -22,7 +23,7 @@ public class CardValidationService {  // NO LONGER implements ValidationService
     }
 
     public CardValidationResult validate(TransactionRequest request) {
-        DemoUtil.simulateNetworkDelay(100);
+        DemoUtil.simulateNetworkDelay(ServiceDelays.CARD_VALIDATION_DELAY);
 
         String cardNumber = request.cardNumber();
 
