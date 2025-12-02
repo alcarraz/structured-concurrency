@@ -3,43 +3,31 @@ package com.example.services;
 import com.example.model.Card;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
-import com.example.repository.CardRepository;
 import com.example.utils.DemoUtil;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-
-import java.util.Optional;
+import jakarta.validation.constraints.NotNull;
 
 @ApplicationScoped
-public class PinValidationService implements ValidationService {
-
-    private final CardRepository cardRepository;
+public class PinValidationService implements CardAwareValidationService {
 
     @Inject
-    public PinValidationService(CardRepository cardRepository) {
-        this.cardRepository = cardRepository;
+    public PinValidationService() {
+        // No dependencies
     }
 
     @Override
-    public ValidationResult validate(TransactionRequest request) {
+    public ValidationResult validate(TransactionRequest request, @NotNull Card card) {
         DemoUtil.simulateNetworkDelay(400);
 
         String requestPin = request.pin();
 
-        // Lookup card in repository
-        Optional<Card> cardOpt = cardRepository.findByCardNumber(request.cardNumber());
-        if (cardOpt.isEmpty()) {
-            return ValidationResult.failure("PIN Validation: Card not found");
-        }
-
-        Card card = cardOpt.get();
-
-        // Compare request PIN vs repository PIN
+        // Compare request PIN vs card PIN
         if (!requestPin.equals(card.pin())) {
             return ValidationResult.failure("PIN Validation: Invalid PIN");
         }
 
-        return ValidationResult.success("PIN Validation: Validation successful");
+        return ValidationResult.success();
     }
 
 }

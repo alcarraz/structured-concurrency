@@ -1,15 +1,17 @@
 package com.example.reactive;
 
+import com.example.model.Card;
+import com.example.model.CardValidationResult;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.model.ValidationResult;
 import com.example.services.BalanceService;
+import com.example.services.CardAwareValidationService;
 import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 import com.example.services.ValidationException;
-import com.example.services.ValidationService;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -34,8 +36,9 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
 
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
+    private final ExpirationService expirationService;
+    private final PinValidationService pinValidationService;
     private final MerchantValidationService merchantValidationService;
-    private final List<ValidationService> cardValidations;
 
     @Inject
     public FixedReactiveFailFastPaymentProcessor(
@@ -46,8 +49,9 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
             MerchantValidationService merchantValidationService) {
         this.balanceService = balanceService;
         this.cardValidationService = cardValidationService;
+        this.expirationService = expirationService;
+        this.pinValidationService = pinValidationService;
         this.merchantValidationService = merchantValidationService;
-        this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 
     @Override
@@ -56,45 +60,40 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
 
         // PATH A: Merchant validation (runs independently with fail-fast)
         CompletableFuture<ValidationResult> merchantValidation = CompletableFuture
-            .supplyAsync(() -> {
-                ValidationResult result = merchantValidationService.validate(request);
-                if (!result.success()) {
-                    throw new ValidationException(result);
-                }
-                return result;
+            .supplyAsync(() -> switch (merchantValidationService.validate(request)) {
+                case ValidationResult.Success s -> s;
+                case ValidationResult.Failure(String m) -> throw new ValidationException(m);
             });
 
         // PATH B: Consumer validation (card → nested parallel validations with fail-fast)
         CompletableFuture<ValidationResult> consumerValidation = CompletableFuture
             .supplyAsync(() -> {
                 // B1: Validate card first
-                ValidationResult cardResult = cardValidationService.validate(request);
-                if (!cardResult.success()) {
-                    throw new ValidationException(cardResult);
-                }
+                CardValidationResult cardResult = cardValidationService.validate(request);
 
-                // B2: Nested parallel validations with TRUE fail-fast coordination
+                // Pattern match - throw exception on failure
+                Card card = switch (cardResult) {
+                    case CardValidationResult.Success(Card c) -> c;
+                    case CardValidationResult.Failure(String msg) ->
+                        throw new ValidationException(msg);
+                };
+
+                // B2: Nested parallel validations with TRUE fail-fast coordination (with Card)
                 // Create a future that completes as soon as we know the final outcome
                 CompletableFuture<ValidationResult> failFast = new CompletableFuture<>();
 
                 // Create validation futures that notify the failFast future
-                List<CompletableFuture<ValidationResult>> futures = cardValidations.stream()
-                    .map(service -> CompletableFuture
-                        .supplyAsync(() -> {
-                            ValidationResult result = service.validate(request);
-                            // On failure, complete failFast immediately (first one wins)
-                            if (!result.success() && !failFast.isDone()) {
-                                failFast.completeExceptionally(new ValidationException(result));
-                            }
-                            return result;
-                        }))
-                    .toList();
+                List<CompletableFuture<ValidationResult>> futures = List.of(
+                        validationTask(expirationService, request, card),
+                        validationTask(pinValidationService, request, card),
+                        validationTask(balanceService, request, card)
+                );
 
                 // When all validations complete successfully, complete failFast with success
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                     .thenRun(() -> {
                         if (!failFast.isDone()) {
-                            failFast.complete(ValidationResult.success("All consumer validations passed"));
+                            failFast.complete(ValidationResult.success());
                         }
                     });
 
@@ -105,7 +104,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 } catch (CompletionException e) {
                     Throwable cause = e.getCause();
                     if (cause instanceof ValidationException ve) {
-                        throw new RuntimeException(ve.getResult().message());
+                        return ValidationResult.failure(ve.getMessage());
                     }
                     throw new RuntimeException("Consumer validation failed");
                 }
@@ -149,6 +148,13 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
 
                 return TransactionResult.failure(reason, processingTime);
             });
+    }
+    
+    private CompletableFuture<ValidationResult> validationTask(CardAwareValidationService service, TransactionRequest request, Card card) {
+        return CompletableFuture.supplyAsync(() -> switch(expirationService.validate(request, card)){
+            case ValidationResult.Success success -> success;
+            case ValidationResult.Failure(String msg) -> throw new ValidationException(msg);
+        });
     }
 
 }

@@ -23,14 +23,18 @@ public class ScopedBalanceService {
         return ValidationResult.success("Balance Check: Validation successful");
     }
 
-    public ValidationResult debit() {
+    public void transfer() {
+        // Access both request and card from scoped values - no parameter passing needed!
         TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
+        var card = ScopedPaymentProcessor.CARD.get();
+
         String cardNumber = request.cardNumber();
+        String merchant = request.merchant();
 
         DemoUtil.simulateNetworkDelay(300);
 
-        logger.info("💳 Debiting {} from card ***{}", request.amount(), cardNumber.substring(cardNumber.length() - 4));
-        return ValidationResult.success("Balance Debit: Amount successfully debited");
+        logger.info("💸 Transferring {} from card {} to {}", request.amount(),
+                   cardNumber.substring(cardNumber.length() - 4), merchant);
     }
 
 }

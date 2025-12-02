@@ -30,11 +30,11 @@ public class BalanceLockingDemo {
         // Create CardRepository first
         CardRepository cardRepository = new CardRepository();
 
-        // Create services (passing cardRepository to BalanceService)
+        // Create services (passing cardRepository to all card-aware services)
         BalanceService balanceService = new BalanceService(cardRepository);
-        CardValidationService cardValidationService = new CardValidationService();
-        ExpirationService expirationService = new ExpirationService(cardRepository);
-        PinValidationService pinValidationService = new PinValidationService(cardRepository);
+        CardValidationService cardValidationService = new CardValidationService(cardRepository);
+        ExpirationService expirationService = new ExpirationService();
+        PinValidationService pinValidationService = new PinValidationService();
         MerchantValidationService merchantValidationService = new MerchantValidationService();
 
         logger.info("🔐 Running BALANCE LOCKING/UNLOCKING Demo");

@@ -7,6 +7,7 @@ import com.example.repository.CardRepository;
 import com.example.utils.DemoUtil;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.NotNull;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import static java.math.BigDecimal.ZERO;
 
 @ApplicationScoped
-public class BalanceService implements ValidationService {
+public class BalanceService implements CardAwareValidationService {
     private static final Logger logger = LogManager.getLogger(BalanceService.class);
 
     private final CardRepository cardRepository;
@@ -47,7 +48,7 @@ public class BalanceService implements ValidationService {
     }
 
     @Override
-    public ValidationResult validate(TransactionRequest request) {
+    public ValidationResult validate(TransactionRequest request, @NotNull Card card) {
         DemoUtil.simulateNetworkDelay(500);
 
         String cardNumber = request.cardNumber();
@@ -56,11 +57,8 @@ public class BalanceService implements ValidationService {
         Lock lock = getLock(cardNumber);
         lock.lock();
         try {
-            // Get balance from CardRepository instead of local balances map
-            BigDecimal cardBalance = cardRepository.findByCardNumber(cardNumber)
-                    .map(Card::balance)
-                    .orElse(ZERO);
-
+            // Use card balance directly
+            BigDecimal cardBalance = card.balance();
             BigDecimal availableBalance = cardBalance.subtract(getLockedAmount(cardNumber));
 
             if (availableBalance.compareTo(amount) < 0) {
@@ -71,7 +69,7 @@ public class BalanceService implements ValidationService {
             lockAmount(cardNumber, request);
 
             logger.info("🔒 Locked {} on card {}", amount, cardNumber.substring(cardNumber.length() - 4));
-            return ValidationResult.success("Balance Check: Validation successful (locked " + amount + ")");
+            return ValidationResult.success();
         } finally {
             lock.unlock();
         }
@@ -99,9 +97,10 @@ public class BalanceService implements ValidationService {
 
     /**
      * Transfers the amount from card to merchant.
+     * Uses Card object directly to get current balance instead of repository lookup.
      * Consumes the locked amount and debits the balance.
      */
-    public void transfer(TransactionRequest request) {
+    public void transfer(TransactionRequest request, @NotNull Card card) {
 //        DemoUtil.simulateNetworkDelay(500);
 
         String cardNumber = request.cardNumber();
@@ -111,26 +110,22 @@ public class BalanceService implements ValidationService {
         Lock lock = getLock(cardNumber);
         lock.lock();
         try {
-            // Get current balance from CardRepository
-            BigDecimal currentBalance = cardRepository.findByCardNumber(cardNumber)
-                    .map(Card::balance)
-                    .orElse(ZERO);
+            // Use card balance directly - no repository lookup needed
+            BigDecimal currentBalance = card.balance();
 
             // Release the lock since we've consumed it
             releaseAmount(cardNumber, request);
 
             // Debit the actual balance and update in CardRepository (copy-on-write)
             BigDecimal newBalance = currentBalance.subtract(amount);
-            cardRepository.findByCardNumber(cardNumber).ifPresent(card -> {
-                Card updatedCard = new Card(
-                    card.cardNumber(),
-                    card.expirationDate(),
-                    card.pin(),
-                    newBalance,
-                    card.description()
-                );
-                cardRepository.save(updatedCard);
-            });
+            Card updatedCard = new Card(
+                card.cardNumber(),
+                card.expirationDate(),
+                card.pin(),
+                newBalance,
+                card.description()
+            );
+            cardRepository.save(updatedCard);
 
             // now we should put the money in the merchant account
 

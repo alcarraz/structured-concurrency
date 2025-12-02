@@ -21,6 +21,8 @@ dependencies {
     implementation 'io.quarkus:quarkus-rest'
     implementation 'io.quarkus:quarkus-rest-jackson'
     implementation 'io.quarkus:quarkus-arc'
+    
+    implementation 'jakarta.validation:jakarta.validation-api'
 
     // Log4J 2
     implementation 'org.apache.logging.log4j:log4j-api:2.24.3'

@@ -501,3 +501,6 @@ gradle-app.setting
 
 .idea
 /out
+
+## kile
+*.kilepr.gui

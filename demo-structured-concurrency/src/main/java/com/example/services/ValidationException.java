@@ -7,14 +7,8 @@ import com.example.model.ValidationResult;
  */
 public class ValidationException extends RuntimeException {
 
-    final ValidationResult result;
-
-    public ValidationException(ValidationResult result) {
-        super(result.message());
-        this.result = result; 
+    public ValidationException(String message) {
+        super(message);
     }
 
-    public ValidationResult getResult() {
-        return result;
-    }
 }

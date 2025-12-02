@@ -1,14 +1,24 @@
 package com.example.model;
 
-public record ValidationResult(
-    boolean success,
-    String message
-) {
-    public static ValidationResult success(String message) {
-        return new ValidationResult(true, message);
+public sealed interface ValidationResult {
+    record Success() implements ValidationResult {};
+    Success SUCCESS = new Success();
+    
+    record Failure(String message) implements ValidationResult {};
+    
+    static ValidationResult success() {
+        return SUCCESS;
     }
-
-    public static ValidationResult failure(String message) {
-        return new ValidationResult(false, message);
+    
+    static ValidationResult failure(String message) {
+        return new Failure(message);
+    }
+    
+    static boolean failure(ValidationResult result) {
+        return result instanceof Failure; 
+    }
+    
+    static boolean success(ValidationResult result) {
+        return result instanceof Success;
     }
 }

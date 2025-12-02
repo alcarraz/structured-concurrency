@@ -18,7 +18,7 @@ public class MerchantValidationService implements ValidationService {
         if (merchant.toUpperCase().contains("BLOCKED")) {
             return ValidationResult.failure("Merchant Validation: Merchant is blocked");
         }
-        return ValidationResult.success("Merchant Validation: Validation successful");
+        return ValidationResult.success();
     }
 
 }

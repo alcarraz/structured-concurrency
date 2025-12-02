@@ -1,5 +1,7 @@
 package com.example.reactive;
 
+import com.example.model.Card;
+import com.example.model.CardValidationResult;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.model.ValidationResult;
@@ -8,7 +10,6 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
-import com.example.services.ValidationService;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,8 +27,9 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
 
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
+    private final ExpirationService expirationService;
+    private final PinValidationService pinValidationService;
     private final MerchantValidationService merchantValidationService;
-    private final List<ValidationService> cardValidations;
 
     @Inject
     public BasicReactivePaymentProcessor(
@@ -38,8 +40,9 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
             MerchantValidationService merchantValidationService) {
         this.balanceService = balanceService;
         this.cardValidationService = cardValidationService;
+        this.expirationService = expirationService;
+        this.pinValidationService = pinValidationService;
         this.merchantValidationService = merchantValidationService;
-        this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 
     @Override
@@ -53,29 +56,35 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
             CompletableFuture.supplyAsync(() -> merchantValidationService.validate(request));
 
         // PATH B: Consumer validation (card → nested parallel validations)
-        CompletableFuture<ValidationResult> consumerValidation =
+        CompletableFuture<CardValidationResult> consumerValidation =
             CompletableFuture.supplyAsync(() -> {
                 // B1: Validate card first (sequential within consumer path)
-                ValidationResult cardResult = cardValidationService.validate(request);
-                if (!cardResult.success()) {
-                    return cardResult;
-                }
+                CardValidationResult cardResult = cardValidationService.validate(request);
 
-                // B2: Nested parallel validations (balance, PIN, expiration)
-                List<CompletableFuture<ValidationResult>> validationFutures = cardValidations.stream()
-                    .map(service -> CompletableFuture.supplyAsync(() -> service.validate(request)))
-                    .toList();
+                // Pattern match on the result
+                return switch (cardResult) {
+                    case CardValidationResult.Success(Card card) -> {
+                        // B2: Nested parallel validations (with Card passed to each)
+                        List<CompletableFuture<ValidationResult>> validationFutures = List.of(
+                            CompletableFuture.supplyAsync(() -> expirationService.validate(request, card)),
+                            CompletableFuture.supplyAsync(() -> pinValidationService.validate(request, card)),
+                            CompletableFuture.supplyAsync(() -> balanceService.validate(request, card))
+                        );
 
-                // Wait for all nested validations
-                CompletableFuture.allOf(validationFutures.toArray(new CompletableFuture[0])).join();
+                        // Wait for all nested validations
+                        CompletableFuture.allOf(validationFutures.toArray(new CompletableFuture[0])).join();
 
-                // Check nested validation results
-                return validationFutures.stream()
-                    .map(CompletableFuture::join)
-                    .filter(r -> !r.success())
-                    .findFirst()
-                    .orElse(ValidationResult.success("All card validations passed"));
-
+                        // Check nested validation results
+                        yield validationFutures.stream()
+                            .map(CompletableFuture::join)
+                            .filter(ValidationResult.Failure.class::isInstance)
+                            .map(ValidationResult.Failure.class::cast)
+                            .findFirst()
+                            .map(r -> CardValidationResult.failure(r.message()))
+                            .orElse(CardValidationResult.success(card));
+                    }
+                    case CardValidationResult.Failure failure -> failure;
+                };
             });
 
         // Wait for BOTH parallel paths (merchant + complete consumer flow)
@@ -85,7 +94,7 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
 
                 return Stream.of(merchantValidation, consumerValidation)
                         .map(CompletableFuture::join)
-                        .filter(r -> !r.success())
+                        .filter(CardValidationResult::isFailure)
                         .findFirst()
                         .map(failure -> {
                             balanceService.releaseAmount(request);

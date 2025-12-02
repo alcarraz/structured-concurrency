@@ -1,15 +1,17 @@
 package com.example.reactive;
 
+import com.example.model.Card;
+import com.example.model.CardValidationResult;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.model.ValidationResult;
 import com.example.services.BalanceService;
+import com.example.services.CardAwareValidationService;
 import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 import com.example.services.ValidationException;
-import com.example.services.ValidationService;
 
 import java.util.List;
 import java.util.UUID;
@@ -36,8 +38,9 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
 
     private final BalanceService balanceService;
     private final CardValidationService cardValidationService;
+    private final ExpirationService expirationService;
+    private final PinValidationService pinValidationService;
     private final MerchantValidationService merchantValidationService;
-    private final List<ValidationService> cardValidations;
 
     @Inject
     public ReactiveWithExceptionsPaymentProcessor(
@@ -48,8 +51,9 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
             MerchantValidationService merchantValidationService) {
         this.balanceService = balanceService;
         this.cardValidationService = cardValidationService;
+        this.expirationService = expirationService;
+        this.pinValidationService = pinValidationService;
         this.merchantValidationService = merchantValidationService;
-        this.cardValidations = List.of(expirationService, pinValidationService, balanceService);
     }
 
     @Override
@@ -58,40 +62,37 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
 
         // PATH A: Merchant validation (runs independently)
         CompletableFuture<ValidationResult> merchantValidation =
-            CompletableFuture.supplyAsync(() -> {
-                ValidationResult result = merchantValidationService.validate(request);
-                if (!result.success()) {
-                    throw new ValidationException(result);
-                }
-                return result;
+            CompletableFuture.supplyAsync(() -> switch (merchantValidationService.validate(request)) {
+                case ValidationResult.Failure(String m) -> throw new ValidationException(m);
+                case ValidationResult.Success success -> success; 
             });
 
         // PATH B: Consumer validation (card → nested parallel validations)
-        CompletableFuture<ValidationResult> consumerValidation =
+        CompletableFuture<CardValidationResult> consumerValidation =
             CompletableFuture.supplyAsync(() -> {
                 // B1: Validate card first
-                ValidationResult cardResult = cardValidationService.validate(request);
-                if (!cardResult.success()) {
-                    throw new ValidationException(cardResult);
-                }
+                CardValidationResult cardResult = cardValidationService.validate(request);
 
-                // B2: Nested parallel validations using SAME exception-based approach as structured concurrency
-                List<CompletableFuture<ValidationResult>> validationFutures = cardValidations.stream()
-                    .map(service -> CompletableFuture.supplyAsync(() -> {
-                        ValidationResult result = service.validate(request);
-                        if (!result.success()) {
-                            throw new ValidationException(result);
-                        }
-                        return result;
-                    }))
-                    .toList();
+                // Pattern match - throw exception on failure
+                Card card = switch (cardResult) {
+                    case CardValidationResult.Success(Card c) -> c;
+                    case CardValidationResult.Failure(String msg) ->
+                        throw new ValidationException(msg);
+                };
+
+                // B2: Nested parallel validations using SAME exception-based approach as structured concurrency (with Card)
+                List<CompletableFuture<ValidationResult>> validationFutures = List.of(
+                        validationTask(expirationService, request, card),
+                        validationTask(pinValidationService, request, card),
+                        validationTask(balanceService, request, card)
+                );
 
                 // CompletableFuture.allOf() waits for ALL tasks to complete (or fail)
                 // This is the KEY difference from StructuredTaskScope which cancels immediately
                 CompletableFuture.allOf(validationFutures.toArray(new CompletableFuture[0])).join();
 
                 // If we get here, all validations passed
-                return ValidationResult.success("All consumer validations passed");
+                return CardValidationResult.success(card);
             });
 
         // Group top-level validations
@@ -136,4 +137,10 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
             });
     }
 
+    private CompletableFuture<ValidationResult> validationTask(CardAwareValidationService service, TransactionRequest request, Card card) {
+        return CompletableFuture.supplyAsync(() -> switch(expirationService.validate(request, card)){
+            case ValidationResult.Success success -> success;
+            case ValidationResult.Failure(String msg) -> throw new ValidationException(msg);
+        });
+    }
 }

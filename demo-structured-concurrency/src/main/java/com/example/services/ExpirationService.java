@@ -3,30 +3,29 @@ package com.example.services;
 import com.example.model.Card;
 import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
-import com.example.repository.CardRepository;
 import com.example.utils.DemoUtil;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.NotNull;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Optional;
 
 @ApplicationScoped
-public class ExpirationService implements ValidationService {
+public class ExpirationService implements CardAwareValidationService {
 
     private static final Logger logger = LogManager.getLogger();
-    private final CardRepository cardRepository;
 
     @Inject
-    public ExpirationService(CardRepository cardRepository) {
-        this.cardRepository = cardRepository;
+    public ExpirationService() {
+        // No dependencies
     }
+
     @Override
-    public ValidationResult validate(TransactionRequest request) {
+    public ValidationResult validate(TransactionRequest request, @NotNull Card card) {
         DemoUtil.simulateNetworkDelay(200);
 
         String expirationDate = request.expirationDate();
@@ -39,15 +38,7 @@ public class ExpirationService implements ValidationService {
 
             YearMonth requestExpiry = YearMonth.parse(expirationDate, DateTimeFormatter.ofPattern("MMyy"));
 
-            // Lookup card in repository
-            Optional<Card> cardOpt = cardRepository.findByCardNumber(request.cardNumber());
-            if (cardOpt.isEmpty()) {
-                return ValidationResult.failure("Expiration Check: Card not found");
-            }
-
-            Card card = cardOpt.get();
-
-            // Parse card's expiration date from repository
+            // Parse card's expiration date from card object
             YearMonth cardExpiry;
             try {
                 if (card.expirationDate().length() != 4) {
@@ -55,11 +46,11 @@ public class ExpirationService implements ValidationService {
                 }
                 cardExpiry = YearMonth.parse(card.expirationDate(), DateTimeFormatter.ofPattern("MMyy"));
             } catch (DateTimeParseException e) {
-                logger.error("Invalid date format in card repository data", e);
+                logger.error("Invalid date format in card data", e);
                 return ValidationResult.failure("Expiration Check: Invalid date format in card data");
             }
 
-            // Compare request date vs repository date
+            // Compare request date vs card date
             if (!requestExpiry.equals(cardExpiry)) {
                 return ValidationResult.failure("Expiration Check: Invalid expiration date");
             }
@@ -70,7 +61,7 @@ public class ExpirationService implements ValidationService {
                 return ValidationResult.failure("Expiration Check: Card expired");
             }
 
-            return ValidationResult.success("Expiration Check: Validation successful");
+            return ValidationResult.success();
 
         } catch (DateTimeParseException e) {
             logger.error("Invalid date format", e);
