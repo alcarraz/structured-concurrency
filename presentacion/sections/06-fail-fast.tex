@@ -54,3 +54,89 @@
 
 \end{frame}
 
+\subsection{Ejemplo de mejora}
+\begin{frame}
+    \frametitle{Resumen de rendimiento: Éxito vs Fallo}
+
+    \begin{columns}
+        \column{0.48\textwidth}
+        \onslide<+->
+        \begin{exampleblock}{Caso Exitoso: Paridad}
+            \begin{itemize}
+                \item \textbf{Sin fallo temprano}: ~750ms
+                \item \textbf{Con fallo temprano}: ~750ms
+                \item \textbf{Resultado}: Mismo rendimiento
+            \end{itemize}
+        \end{exampleblock}
+
+        \onslide<+->
+        \begin{block}{¿Por qué iguales?}
+            Ambos deben esperar que todas las validaciones terminen.
+        \end{block}
+
+        \column{0.48\textwidth}
+        \onslide<+->
+        \begin{alertblock}{Caso Fallido: Más Rápido}
+            \begin{itemize}
+                \item \textbf{Reactive}: ~750ms
+                \item \textbf{Structured}: ~330ms
+                \item \textbf{Mejora}: \textcolor{red}{\textbf{56\%}}
+            \end{itemize}
+        \end{alertblock}
+
+        \onslide<+->
+        \begin{block}{¿Por qué?}
+            \begin{itemize}
+                \item Sin fail fast: Esperar a que todas las validaciones terminen.
+                \item Con fail fast: Cancela automáticamente cuando la primera falla.
+            \end{itemize}
+        \end{block}
+    \end{columns}
+
+    \vspace{1em}
+\end{frame}
+\begin{frame}
+    \begin{center}
+        \begin{tikzpicture}[scale=0.65]
+            % Y axis
+            \draw[->] (0,0) -- (0,8) node[anchor=south] {\tiny ms};
+            % X axis
+            \draw[->] (0,0) -- (5,0);
+
+            % Grid lines
+            \foreach \y in {1,2,3,4,5,6,7,8}
+            \draw[dashed, gray!30] (0,\y) -- (4.5,\y);
+
+            % Y axis labels
+            \node[anchor=east] at (-0.1,0) {\tiny 0};
+            \node[anchor=east] at (-0.1,1) {\tiny 100};
+            \node[anchor=east] at (-0.1,2) {\tiny 200};
+            \node[anchor=east] at (-0.1,3) {\tiny 300};
+            \node[anchor=east] at (-0.1,4) {\tiny 400};
+            \node[anchor=east] at (-0.1,5) {\tiny 500};
+            \node[anchor=east] at (-0.1,6) {\tiny 600};
+            \node[anchor=east] at (-0.1,7) {\tiny 700};
+            \node[anchor=east] at (-0.1,8) {\tiny 800};
+
+            % Reactive bar (750ms ≈ 7.5 units)
+            \fill[red!60] (0.5,0) rectangle (1.5,7.5);
+            \node[anchor=north, font=\tiny] at (1,0) {Sin fail-fast};
+            \node[font=\tiny, white] at (1,4) {750ms};
+
+            % Structured bar (330ms ≈ 3.3 units)
+            \fill[green!60] (2.5,0) rectangle (3.5,3.3);
+            \node[anchor=north, font=\tiny] at (3,0) {Con fail-fast};
+            \node[font=\tiny] at (3,1.5) {330ms};
+
+            % Arrow showing difference
+            \draw[<->, thick, blue] (4,3.3) -- (4,7.5) node[midway, right, font=\tiny] {56 \% faster};
+
+        \end{tikzpicture}
+    \end{center}
+
+    \begin{exampleblock}{Conclusi\'on}
+        Mejor experiencia del usuario y menor uso de recursos en casos de error. \\
+        Misma eficiencia en casos de éxito.
+    \end{exampleblock}
+\end{frame}
+
