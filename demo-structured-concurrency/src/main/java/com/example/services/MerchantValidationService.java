@@ -10,7 +10,7 @@ public class MerchantValidationService implements ValidationService {
 
     @Override
     public ValidationResult validate(TransactionRequest request) {
-        DemoUtil.simulateNetworkDelay(300);
+        DemoUtil.simulateNetworkDelay(500);
 
         String merchant = request.merchant();
 

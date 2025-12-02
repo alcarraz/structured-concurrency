@@ -18,7 +18,7 @@ public class PinValidationService implements CardAwareValidationService {
 
     @Override
     public ValidationResult validate(TransactionRequest request, @NotNull Card card) {
-        DemoUtil.simulateNetworkDelay(400);
+        DemoUtil.simulateNetworkDelay(300);
 
         String requestPin = request.pin();
 

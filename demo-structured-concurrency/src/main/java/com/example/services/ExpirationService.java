@@ -31,33 +31,12 @@ public class ExpirationService implements CardAwareValidationService {
         String expirationDate = request.expirationDate();
 
         try {
-            // Parse MMYY format (e.g., "1225" for December 2025)
-            if (expirationDate.length() != 4) {
-                return ValidationResult.failure("Expiration Check: Invalid date format");
-            }
-
-            YearMonth requestExpiry = YearMonth.parse(expirationDate, DateTimeFormatter.ofPattern("MMyy"));
-
-            // Parse card's expiration date from card object
-            YearMonth cardExpiry;
-            try {
-                if (card.expirationDate().length() != 4) {
-                    return ValidationResult.failure("Expiration Check: Invalid date format in card data");
-                }
-                cardExpiry = YearMonth.parse(card.expirationDate(), DateTimeFormatter.ofPattern("MMyy"));
-            } catch (DateTimeParseException e) {
-                logger.error("Invalid date format in card data", e);
-                return ValidationResult.failure("Expiration Check: Invalid date format in card data");
-            }
-
-            // Compare request date vs card date
-            if (!requestExpiry.equals(cardExpiry)) {
-                return ValidationResult.failure("Expiration Check: Invalid expiration date");
-            }
+            if (!request.expirationDate().equals(card.expirationDate())) return new ValidationResult.Failure("Invalid card data");
+            YearMonth expiry = YearMonth.parse(expirationDate, DateTimeFormatter.ofPattern("MMyy"));
 
             // Check if card is expired
             YearMonth currentMonth = YearMonth.now();
-            if (cardExpiry.isBefore(currentMonth)) {
+            if (expiry.isBefore(currentMonth)) {
                 return ValidationResult.failure("Expiration Check: Card expired");
             }
 

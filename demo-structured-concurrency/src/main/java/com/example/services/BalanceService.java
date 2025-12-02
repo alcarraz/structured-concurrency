@@ -49,7 +49,7 @@ public class BalanceService implements CardAwareValidationService {
 
     @Override
     public ValidationResult validate(TransactionRequest request, @NotNull Card card) {
-        DemoUtil.simulateNetworkDelay(500);
+        DemoUtil.simulateNetworkDelay(600);
 
         String cardNumber = request.cardNumber();
         BigDecimal amount = request.amount();
@@ -101,7 +101,6 @@ public class BalanceService implements CardAwareValidationService {
      * Consumes the locked amount and debits the balance.
      */
     public void transfer(TransactionRequest request, @NotNull Card card) {
-//        DemoUtil.simulateNetworkDelay(500);
 
         String cardNumber = request.cardNumber();
         String merchant = request.merchant();

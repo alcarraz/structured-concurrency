@@ -14,6 +14,7 @@ import java.util.Optional;
 public class CardValidationService {  // NO LONGER implements ValidationService
 
     private final CardRepository cardRepository;
+    private static final CardValidationResult.Failure NOT_FOUND = new CardValidationResult.Failure("Card Not Found");
 
     @Inject
     public CardValidationService(CardRepository cardRepository) {
@@ -21,22 +22,14 @@ public class CardValidationService {  // NO LONGER implements ValidationService
     }
 
     public CardValidationResult validate(TransactionRequest request) {
-        DemoUtil.simulateNetworkDelay(300);
+        DemoUtil.simulateNetworkDelay(100);
 
         String cardNumber = request.cardNumber();
 
-        // Simple validation: fail if card contains "0000" for demo purposes
-        if (cardNumber.contains("0000")) {
-            return CardValidationResult.failure("Card Validation: Invalid card");
-        }
-
         // Lookup card in repository
-        Optional<Card> cardOpt = cardRepository.findByCardNumber(cardNumber);
-        if (cardOpt.isEmpty()) {
-            throw new RuntimeException("Card Validation: Card not found");
-        }
-
-        return CardValidationResult.success(cardOpt.get());
+        return cardRepository.findByCardNumber(cardNumber)
+                .<CardValidationResult>map(CardValidationResult.Success::new)
+                .orElse(NOT_FOUND);
     }
 
 }
