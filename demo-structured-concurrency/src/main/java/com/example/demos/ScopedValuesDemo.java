@@ -6,9 +6,9 @@ import com.example.repository.CardRepository;
 import com.example.scopedvalues.ScopedBalanceService;
 import com.example.scopedvalues.ScopedCardValidationService;
 import com.example.scopedvalues.ScopedExpirationService;
+import com.example.scopedvalues.ScopedMerchantValidationService;
 import com.example.scopedvalues.ScopedPaymentProcessor;
 import com.example.scopedvalues.ScopedPinValidationService;
-import com.example.services.MerchantValidationService;
 import com.example.utils.DemoUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,7 +38,7 @@ public class ScopedValuesDemo {
                 new ScopedBalanceService(new CardRepository()), 
                 new ScopedExpirationService(),
                 new ScopedPinValidationService(),
-                new MerchantValidationService());
+                new ScopedMerchantValidationService());
 
         // Valid transaction - request data will be accessible via ScopedValue
         TransactionRequest validRequest = new TransactionRequest(

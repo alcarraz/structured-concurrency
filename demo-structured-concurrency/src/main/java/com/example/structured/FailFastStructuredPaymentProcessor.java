@@ -62,21 +62,19 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
         long startTime = System.currentTimeMillis();
         logger.info("🚀 Starting FAIL-FAST STRUCTURED transaction processing for merchant {}", request.merchant());
 
-        // Context to hold the validated card
-        var context = new Object() {
-            Card card;
-        };
-
         try {
             // Step 1: Parallel - Validate Merchant AND Consumer (Card) with fail-fast
             try (var globalScope = StructuredTaskScope.open()) {
 
                 // Fork merchant validation
-                createValidationTask(merchantValidationService, request, globalScope);
-
+                globalScope.fork(() -> {
+                    if (merchantValidationService.validate(request) instanceof ValidationResult.Failure(String msg)) {
+                        throw new ValidationException(msg);
+                    }
+                });
 
                 // Fork consumer validation path (card + nested parallel validations)
-                globalScope.fork(() -> {
+                StructuredTaskScope.Subtask<Card> consumerValidation = globalScope.fork(() -> {
                     // First validate card
                     CardValidationResult cardResult = cardValidationService.validate(request);
 
@@ -86,8 +84,6 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
                         case CardValidationResult.Failure(String msg) -> throw new ValidationException(msg);
                     };
 
-                    // Save card in context for later use in transfer
-                    context.card = card;
 
                     // Continue with nested validations using card
                     try (var consumerScope = StructuredTaskScope.open()) {
@@ -98,25 +94,24 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
 
                         consumerScope.join();
 
-                        return ValidationResult.success();
+                        return card;
                     }
                 });
 
                 // Wait for both parallel paths to complete
                 globalScope.join();
 
+                // Step 3: Transfer amount if all validations passed
+                balanceService.transfer(request, consumerValidation.get());
+                long processingTime = System.currentTimeMillis() - startTime;
+
+                String transactionId = UUID.randomUUID().toString();
+                logger.info("✅ FAIL-FAST STRUCTURED transaction completed: {} (in {}ms)",
+                        transactionId, processingTime);
+                return TransactionResult.success(transactionId, request.amount(), processingTime);
             } catch (StructuredTaskScope.FailedException e) {
                 throw (e.getCause() instanceof RuntimeException re) ? re : e;
             }
-
-            // Step 3: Transfer amount if all validations passed
-            balanceService.transfer(request, context.card);
-            long processingTime = System.currentTimeMillis() - startTime;
-
-            String transactionId = UUID.randomUUID().toString();
-            logger.info("✅ FAIL-FAST STRUCTURED transaction completed: {} (in {}ms)",
-                       transactionId, processingTime);
-            return TransactionResult.success(transactionId, request.amount(), processingTime);
 
         } catch (StructuredTaskScope.FailedException e) {
             balanceService.releaseAmount(request);
@@ -131,19 +126,10 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
         }
     }
 
-    private static void createValidationTask(com.example.services.ValidationService service, TransactionRequest request, StructuredTaskScope<Object, Void> scope) {
-        scope.fork(() -> {
-            ValidationResult result = service.validate(request);
-            if (result instanceof ValidationResult.Failure(String m)) {
-                throw new ValidationException(m);
-            }
-        });
-    }
 
     private static void createCardAwareValidationTask(CardAwareValidationService service, TransactionRequest request, Card card, StructuredTaskScope<Object, Void> scope) {
         scope.fork(() -> {
-            ValidationResult result = service.validate(request, card);
-            if (result instanceof ValidationResult.Failure(String m)) {
+            if (service.validate(request, card) instanceof ValidationResult.Failure(String m)) {
                 throw new ValidationException(m);
             }
         });

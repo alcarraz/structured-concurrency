@@ -5,7 +5,6 @@ import com.example.model.CardValidationResult;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.model.ValidationResult;
-import com.example.services.MerchantValidationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,14 +21,14 @@ public class ScopedPaymentProcessor {
     private final ScopedCardValidationService cardValidationService;
     private final ScopedExpirationService expirationService;
     private final ScopedPinValidationService pinValidationService;
-    private final MerchantValidationService merchantValidationService;
+    private final ScopedMerchantValidationService merchantValidationService;
 
     public ScopedPaymentProcessor(
             ScopedCardValidationService cardValidationService, 
             ScopedBalanceService balanceService, 
             ScopedExpirationService expirationService, 
             ScopedPinValidationService pinValidationService, 
-            MerchantValidationService merchantValidationService
+            ScopedMerchantValidationService merchantValidationService
     ) {
         this.balanceService = balanceService;
         this.cardValidationService = cardValidationService;
@@ -49,18 +48,11 @@ public class ScopedPaymentProcessor {
                 try (var globalScope = StructuredTaskScope.open()) {
 
                     // PATH A: Fork merchant validation
-                    StructuredTaskScope.Subtask<ValidationResult> merchantValidation =
-                        globalScope.fork(() -> {
-                            ValidationResult result = merchantValidationService.validate(request);
-                            if (result instanceof ValidationResult.Failure(String msg)) {
-                                throw new com.example.services.ValidationException(msg);
-                            }
-                            return ValidationResult.success();
-                        });
-
+                    createValidationTask(merchantValidationService, globalScope);
+                    
                     // PATH B: Fork consumer validation (card + nested validations)
                     // Returns CardValidationResult so we can extract the Card after join
-                    StructuredTaskScope.Subtask<CardValidationResult> consumerValidation =
+                    StructuredTaskScope.Subtask<Card> consumerValidation =
                         globalScope.fork(() -> {
                             // Sequential: Validate card first
                             CardValidationResult cardResult = cardValidationService.validate();
@@ -86,7 +78,7 @@ public class ScopedPaymentProcessor {
                                     consumerScope.join();
 
                                     // Return the CardValidationResult with the card
-                                    return cardResult;
+                                    return card;
                                 }
                             });
                         });
@@ -94,13 +86,7 @@ public class ScopedPaymentProcessor {
                     // Wait for both parallel paths (merchant + consumer)
                     globalScope.join();
 
-                    // Extract the card from the consumer validation result
-                    CardValidationResult cardResult = consumerValidation.get();
-                    Card card = switch (cardResult) {
-                        case CardValidationResult.Success(Card c) -> c;
-                        case CardValidationResult.Failure(String msg) ->
-                            throw new com.example.services.ValidationException(msg);
-                    };
+                    Card card = consumerValidation.get();
 
                     // All validations passed - perform transfer
                     // Re-establish CARD context for transfer
@@ -135,11 +121,9 @@ public class ScopedPaymentProcessor {
         StructuredTaskScope<Object, Void> scope
     ) {
         scope.fork(() -> {
-            ValidationResult result = service.validate();
-            if (result instanceof ValidationResult.Failure(String msg)) {
+            if (service.validate() instanceof ValidationResult.Failure(String msg)) {
                 throw new com.example.services.ValidationException(msg);
             }
-            return ValidationResult.success();
         });
     }
 }
