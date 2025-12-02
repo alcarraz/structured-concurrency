@@ -68,7 +68,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
             });
 
         // PATH B: Consumer validation (card → nested parallel validations)
-        CompletableFuture<CardValidationResult> consumerValidation =
+        CompletableFuture<Card> consumerValidation =
             CompletableFuture.supplyAsync(() -> {
                 // B1: Validate card first
                 CardValidationResult cardResult = cardValidationService.validate(request);
@@ -91,28 +91,20 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
                 // This is the KEY difference from StructuredTaskScope which cancels immediately
                 CompletableFuture.allOf(validationFutures.toArray(new CompletableFuture[0])).join();
 
-                // If we get here, all validations passed
-                return CardValidationResult.success(card);
+                // If we get here, all validations passed - return the Card
+                return card;
             });
 
-        // Group top-level validations
-        List<CompletableFuture<ValidationResult>> topLevelValidations = List.of(merchantValidation, consumerValidation);
-
         // Wait for BOTH parallel paths (merchant AND consumer)
-        return CompletableFuture.allOf(topLevelValidations.toArray(new CompletableFuture[0]))
+        return CompletableFuture.allOf(merchantValidation, consumerValidation)
             .thenCompose(_ -> {
-                // Check all validation results uniformly
-                topLevelValidations.stream()
-                    .map(CompletableFuture::join)
-                    .filter(r -> !r.success())
-                    .findFirst()
-                    .ifPresent(failure -> {
-                        throw new ValidationException(failure);
-                    });
+                // If we get here, all validations passed (exceptions would have been thrown otherwise)
+                // Extract the card for transfer
+                Card card = consumerValidation.join();
 
                 // Step 3: Transfer amount if all validations passed
                 logger.debug("✅ All validations passed, proceeding with transfer...");
-                return CompletableFuture.runAsync(() -> balanceService.transfer(request));
+                return CompletableFuture.runAsync(() -> balanceService.transfer(request, card));
             })
             .thenApply(_ -> {
                 long processingTime = System.currentTimeMillis() - startTime;
@@ -138,7 +130,7 @@ public class ReactiveWithExceptionsPaymentProcessor implements ReactivePaymentPr
     }
 
     private CompletableFuture<ValidationResult> validationTask(CardAwareValidationService service, TransactionRequest request, Card card) {
-        return CompletableFuture.supplyAsync(() -> switch(expirationService.validate(request, card)){
+        return CompletableFuture.supplyAsync(() -> switch(service.validate(request, card)){
             case ValidationResult.Success success -> success;
             case ValidationResult.Failure(String msg) -> throw new ValidationException(msg);
         });

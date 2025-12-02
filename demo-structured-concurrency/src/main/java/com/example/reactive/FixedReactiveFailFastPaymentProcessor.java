@@ -66,7 +66,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
             });
 
         // PATH B: Consumer validation (card → nested parallel validations with fail-fast)
-        CompletableFuture<ValidationResult> consumerValidation = CompletableFuture
+        CompletableFuture<Card> consumerValidation = CompletableFuture
             .supplyAsync(() -> {
                 // B1: Validate card first
                 CardValidationResult cardResult = cardValidationService.validate(request);
@@ -80,7 +80,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
 
                 // B2: Nested parallel validations with TRUE fail-fast coordination (with Card)
                 // Create a future that completes as soon as we know the final outcome
-                CompletableFuture<ValidationResult> failFast = new CompletableFuture<>();
+                CompletableFuture<Card> failFast = new CompletableFuture<>();
 
                 // Create validation futures that notify the failFast future
                 List<CompletableFuture<ValidationResult>> futures = List.of(
@@ -89,11 +89,11 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                         validationTask(balanceService, request, card)
                 );
 
-                // When all validations complete successfully, complete failFast with success
+                // When all validations complete successfully, complete failFast with Card
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                     .thenRun(() -> {
                         if (!failFast.isDone()) {
-                            failFast.complete(ValidationResult.success());
+                            failFast.complete(card);
                         }
                     });
 
@@ -104,30 +104,22 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 } catch (CompletionException e) {
                     Throwable cause = e.getCause();
                     if (cause instanceof ValidationException ve) {
-                        return ValidationResult.failure(ve.getMessage());
+                        throw ve;
                     }
                     throw new RuntimeException("Consumer validation failed");
                 }
             });
 
-        // Group top-level validations
-        List<CompletableFuture<ValidationResult>> topLevelValidations = List.of(merchantValidation, consumerValidation);
-
         // Wait for BOTH parallel paths (merchant AND consumer)
-        return CompletableFuture.allOf(topLevelValidations.toArray(new CompletableFuture[0]))
+        return CompletableFuture.allOf(merchantValidation, consumerValidation)
             .thenCompose(_ -> {
-                // Check all validation results uniformly
-                topLevelValidations.stream()
-                    .map(CompletableFuture::join)
-                    .filter(r -> !r.success())
-                    .findFirst()
-                    .ifPresent(failure -> {
-                        throw new ValidationException(failure);
-                    });
+                // If we get here, all validations passed (exceptions would have been thrown otherwise)
+                // Extract the card for transfer
+                Card card = consumerValidation.join();
 
                 // Step 3: Transfer amount if all validations passed
                 logger.debug("✅ All validations passed, proceeding with transfer...");
-                return CompletableFuture.runAsync(() -> balanceService.transfer(request));
+                return CompletableFuture.runAsync(() -> balanceService.transfer(request, card));
             })
             .thenApply(_ -> {
                 long processingTime = System.currentTimeMillis() - startTime;
@@ -151,7 +143,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
     }
     
     private CompletableFuture<ValidationResult> validationTask(CardAwareValidationService service, TransactionRequest request, Card card) {
-        return CompletableFuture.supplyAsync(() -> switch(expirationService.validate(request, card)){
+        return CompletableFuture.supplyAsync(() -> switch(service.validate(request, card)){
             case ValidationResult.Success success -> success;
             case ValidationResult.Failure(String msg) -> throw new ValidationException(msg);
         });

@@ -6,6 +6,7 @@ import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.model.ValidationResult;
 import com.example.services.BalanceService;
+import com.example.services.CardAwareValidationService;
 import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
@@ -130,7 +131,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
         }
     }
 
-    private void createValidationTask(com.example.services.ValidationService service, TransactionRequest request, StructuredTaskScope<Object, Void> scope) {
+    private static void createValidationTask(com.example.services.ValidationService service, TransactionRequest request, StructuredTaskScope<Object, Void> scope) {
         scope.fork(() -> {
             ValidationResult result = service.validate(request);
             if (result instanceof ValidationResult.Failure(String m)) {
@@ -139,7 +140,7 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
         });
     }
 
-    private void createCardAwareValidationTask(com.example.services.CardAwareValidationService service, TransactionRequest request, Card card, StructuredTaskScope<Object, Void> scope) {
+    private static void createCardAwareValidationTask(CardAwareValidationService service, TransactionRequest request, Card card, StructuredTaskScope<Object, Void> scope) {
         scope.fork(() -> {
             ValidationResult result = service.validate(request, card);
             if (result instanceof ValidationResult.Failure(String m)) {

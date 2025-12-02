@@ -3,7 +3,12 @@ package com.example.demos;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.repository.CardRepository;
+import com.example.scopedvalues.ScopedBalanceService;
+import com.example.scopedvalues.ScopedCardValidationService;
+import com.example.scopedvalues.ScopedExpirationService;
 import com.example.scopedvalues.ScopedPaymentProcessor;
+import com.example.scopedvalues.ScopedPinValidationService;
+import com.example.services.MerchantValidationService;
 import com.example.utils.DemoUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,10 +33,12 @@ public class ScopedValuesDemo {
         logger.info("🔗 Running SCOPED VALUES Demo");
         logger.info("═════════════════════════════");
 
-        // Create CardRepository first
-        CardRepository cardRepository = new CardRepository();
-
-        ScopedPaymentProcessor processor = new ScopedPaymentProcessor(cardRepository);
+        ScopedPaymentProcessor processor = new ScopedPaymentProcessor(
+                new ScopedCardValidationService(new CardRepository()),
+                new ScopedBalanceService(), 
+                new ScopedExpirationService(),
+                new ScopedPinValidationService(),
+                new MerchantValidationService());
 
         // Valid transaction - request data will be accessible via ScopedValue
         TransactionRequest validRequest = new TransactionRequest(

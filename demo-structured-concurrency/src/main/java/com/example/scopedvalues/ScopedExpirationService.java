@@ -7,7 +7,7 @@ import com.example.utils.DemoUtil;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 
-public class ScopedExpirationService {
+public class ScopedExpirationService implements ScopedValidationService {
 
     public ValidationResult validate() {
         TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
@@ -29,7 +29,7 @@ public class ScopedExpirationService {
                 return ValidationResult.failure("Expiration Check: Card expired");
             }
 
-            return ValidationResult.success("Expiration Check: Validation successful");
+            return ValidationResult.success();
         } catch (Exception e) {
             return ValidationResult.failure("Expiration Check: Invalid expiration date format");
         }

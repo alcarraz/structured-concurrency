@@ -14,7 +14,6 @@ import com.example.services.PinValidationService;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -90,33 +89,36 @@ public class BasicReactivePaymentProcessor implements ReactivePaymentProcessor {
         // Wait for BOTH parallel paths (merchant + complete consumer flow)
         return CompletableFuture.allOf(merchantValidation, consumerValidation)
             .thenCompose(_ -> {
-                // Check all validation results uniformly
+                // Get both results
+                ValidationResult merchantResult = merchantValidation.join();
+                CardValidationResult cardResult = consumerValidation.join();
 
-                return Stream.of(merchantValidation, consumerValidation)
-                        .map(CompletableFuture::join)
-                        .filter(CardValidationResult::isFailure)
-                        .findFirst()
-                        .map(failure -> {
-                            balanceService.releaseAmount(request);
+                // Check for failures
+                if (merchantResult instanceof ValidationResult.Failure(String msg)) {
+                    balanceService.releaseAmount(request);
+                    long processingTime = System.currentTimeMillis() - startTime;
+                    logger.info("❌ REACTIVE transaction failed: {} (in {}ms)", msg, processingTime);
+                    return CompletableFuture.completedFuture(TransactionResult.failure(msg, processingTime));
+                }
+
+                if (cardResult instanceof CardValidationResult.Failure(String msg)) {
+                    balanceService.releaseAmount(request);
+                    long processingTime = System.currentTimeMillis() - startTime;
+                    logger.info("❌ REACTIVE transaction failed: {} (in {}ms)", msg, processingTime);
+                    return CompletableFuture.completedFuture(TransactionResult.failure(msg, processingTime));
+                }
+
+                // Both validations passed - extract card and transfer
+                Card card = ((CardValidationResult.Success) cardResult).card();
+                return CompletableFuture
+                        .runAsync(() -> balanceService.transfer(request, card))
+                        .thenApply(_ -> {
                             long processingTime = System.currentTimeMillis() - startTime;
-                            logger.info("❌ REACTIVE transaction failed: {} (in {}ms)",
-                                    failure.message(), processingTime);
-                            return CompletableFuture.completedFuture(
-                                    TransactionResult.failure(failure.message(), processingTime));
-                        })
-                        .orElseGet(() ->
-                                // Step 2: Transfer amount if both paths succeeded
-                                CompletableFuture
-                                        .runAsync(() -> balanceService.transfer(request))
-                                        .thenApply(_ -> {
-                                            long processingTime = System.currentTimeMillis() - startTime;
-
-                                            String transactionId = UUID.randomUUID().toString();
-                                            logger.info("✅ REACTIVE transaction completed: {} (in {}ms)",
-                                                    transactionId, processingTime);
-                                            return TransactionResult.success(transactionId, request.amount(), processingTime);
-                                        })                            
-                        );
+                            String transactionId = UUID.randomUUID().toString();
+                            logger.info("✅ REACTIVE transaction completed: {} (in {}ms)",
+                                    transactionId, processingTime);
+                            return TransactionResult.success(transactionId, request.amount(), processingTime);
+                        });
             })
             .exceptionally(throwable -> {
                 long processingTime = System.currentTimeMillis() - startTime;

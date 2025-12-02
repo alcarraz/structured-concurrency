@@ -6,7 +6,7 @@ import com.example.utils.DemoUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class ScopedBalanceService {
+public class ScopedBalanceService implements ScopedValidationService {
     private static final Logger logger = LogManager.getLogger(ScopedBalanceService.class);
 
     public ValidationResult validate() {
@@ -20,13 +20,12 @@ public class ScopedBalanceService {
             return ValidationResult.failure("Balance Check: Insufficient funds");
         }
 
-        return ValidationResult.success("Balance Check: Validation successful");
+        return ValidationResult.success();
     }
 
     public void transfer() {
         // Access both request and card from scoped values - no parameter passing needed!
         TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
-        var card = ScopedPaymentProcessor.CARD.get();
 
         String cardNumber = request.cardNumber();
         String merchant = request.merchant();

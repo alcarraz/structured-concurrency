@@ -6,7 +6,7 @@ import com.example.utils.DemoUtil;
 
 import java.util.Map;
 
-public class ScopedPinValidationService {
+public class ScopedPinValidationService implements ScopedValidationService {
     private static final Map<String, String> cardPins = Map.of(
         "4532-1234-5678-9012", "1234",
         "5555-4444-3333-2222", "9876",
@@ -35,7 +35,7 @@ public class ScopedPinValidationService {
             return ValidationResult.failure("PIN Validation: Invalid PIN");
         }
 
-        return ValidationResult.success("PIN Validation: Validation successful");
+        return ValidationResult.success();
     }
 
 }

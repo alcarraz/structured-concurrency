@@ -9,8 +9,6 @@ import com.example.services.MerchantValidationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.StructuredTaskScope;
 
 public class ScopedPaymentProcessor {
@@ -26,98 +24,122 @@ public class ScopedPaymentProcessor {
     private final ScopedPinValidationService pinValidationService;
     private final MerchantValidationService merchantValidationService;
 
-    public ScopedPaymentProcessor(com.example.repository.CardRepository cardRepository, MerchantValidationService merchantValidationService) {
-        this.balanceService = new ScopedBalanceService();
-        this.cardValidationService = new ScopedCardValidationService(cardRepository);
-        this.expirationService = new ScopedExpirationService();
-        this.pinValidationService = new ScopedPinValidationService();
+    public ScopedPaymentProcessor(
+            ScopedCardValidationService cardValidationService, 
+            ScopedBalanceService balanceService, 
+            ScopedExpirationService expirationService, 
+            ScopedPinValidationService pinValidationService, 
+            MerchantValidationService merchantValidationService
+    ) {
+        this.balanceService = balanceService;
+        this.cardValidationService = cardValidationService;
+        this.expirationService = expirationService;
+        this.pinValidationService = pinValidationService;
         this.merchantValidationService = merchantValidationService;
     }
 
     public TransactionResult processTransaction(TransactionRequest request) throws Exception {
         long startTime = System.currentTimeMillis();
-        return ScopedValue.where(TRANSACTION_REQUEST, request).call(() -> {
-            try (var globalScope = StructuredTaskScope.open()) {
-                // Fork merchant validation
-                StructuredTaskScope.Subtask<ValidationResult> merchantValidation = globalScope.fork(() ->
-                        merchantValidationService.validate(request));
-                
-            }
-        });
-        // Run the entire transaction within the scoped value context
+        logger.info("🚀 Starting SCOPED VALUES transaction processing for merchant {}", request.merchant());
+
+        // Establish TRANSACTION_REQUEST scoped context for entire operation
         return ScopedValue.where(TRANSACTION_REQUEST, request).call(() -> {
             try {
-                // Step 1: Validate card first (sequential)
-                CardValidationResult cardResult = cardValidationService.validate();
+                // Level 1: Global scope with parallel merchant + consumer paths
+                try (var globalScope = StructuredTaskScope.open()) {
 
-                // Pattern match on the result
-                return switch (cardResult) {
-                    case CardValidationResult.Success(Card card) -> {
-                        logger.info("✅ Card validation passed, proceeding with parallel validations...");
-
-                        // Set the card in scoped context for nested validations
-                        yield ScopedValue.where(CARD, card).call(() -> {
-                            // Step 2: Parallel validations with scoped context (Card available via ScopedValue)
-                            try (var scope = StructuredTaskScope.open(StructuredTaskScope.Joiner.allSuccessfulOrThrow())) {
-                                // Fork parallel validation tasks - they automatically inherit the scoped context
-                                var balanceTask = scope.fork(balanceService::validate);
-                                var expirationTask = scope.fork(expirationService::validate);
-                                var pinTask = scope.fork(pinValidationService::validate);
-
-                                // Wait for all parallel tasks to complete
-                                scope.join().;
-
-                                // Collect parallel validation results
-                                List<ValidationResult> parallelResults = List.of(
-                                    balanceTask.get(),
-                                    expirationTask.get(),
-                                    pinTask.get()
-                                );
-
-                                // Check if all parallel validations passed
-                                boolean allValid = parallelResults.stream().allMatch(ValidationResult::success);
-                                if (!allValid) {
-                                    String failureReason = parallelResults.stream()
-                                        .filter(ValidationResult.Failure.class::isInstance)
-                                        .map(ValidationResult.Failure.class::cast)
-                                        .map(ValidationResult.Failure::message)
-                                        .findFirst()
-                                        .orElseThrow(() -> new IllegalStateException("Unknown validation error"));
-
-                                    long processingTime = System.currentTimeMillis() - startTime;
-                                    logger.info("❌ SCOPED VALUES transaction failed: {} (in {}ms)",
-                                                     failureReason, processingTime);
-                                    return TransactionResult.failure(failureReason, processingTime);
-                                }
-
-                                logger.info("✅ All validations passed, proceeding with transfer...");
-
-                                // Step 3: Transfer the amount (uses scoped values internally)
-                                balanceService.transfer();
-
-                                // Success!
-                                long processingTime = System.currentTimeMillis() - startTime;
-                                String transactionId = UUID.randomUUID().toString();
-                                logger.info("✅ SCOPED VALUES transaction completed: {} (in {}ms)",
-                                                 transactionId, processingTime);
-                                return TransactionResult.success(transactionId, request.amount(), processingTime);
+                    // PATH A: Fork merchant validation
+                    StructuredTaskScope.Subtask<ValidationResult> merchantValidation =
+                        globalScope.fork(() -> {
+                            ValidationResult result = merchantValidationService.validate(request);
+                            if (result instanceof ValidationResult.Failure(String msg)) {
+                                throw new com.example.services.ValidationException(msg);
                             }
+                            return ValidationResult.success();
                         });
-                    }
-                    case CardValidationResult.Failure(String message) -> {
+
+                    // PATH B: Fork consumer validation (card + nested validations)
+                    // Returns CardValidationResult so we can extract the Card after join
+                    StructuredTaskScope.Subtask<CardValidationResult> consumerValidation =
+                        globalScope.fork(() -> {
+                            // Sequential: Validate card first
+                            CardValidationResult cardResult = cardValidationService.validate();
+
+                            // Pattern match on card result
+                            Card card = switch (cardResult) {
+                                case CardValidationResult.Success(Card c) -> c;
+                                case CardValidationResult.Failure(String msg) ->
+                                    throw new com.example.services.ValidationException(msg);
+                            };
+
+                            // Establish CARD scoped context for nested validations
+                            return ScopedValue.where(CARD, card).call(() -> {
+                                // Level 2: Nested scope with parallel balance/expiration/pin
+                                try (var consumerScope = StructuredTaskScope.open()) {
+
+                                    // Fork parallel validations (inherit both scoped values)
+                                    createValidationTask(balanceService, consumerScope);
+                                    createValidationTask(expirationService, consumerScope);
+                                    createValidationTask(pinValidationService, consumerScope);
+
+                                    // Wait for all nested validations
+                                    consumerScope.join();
+
+                                    // Return the CardValidationResult with the card
+                                    return cardResult;
+                                }
+                            });
+                        });
+
+                    // Wait for both parallel paths (merchant + consumer)
+                    globalScope.join();
+
+                    // Extract the card from the consumer validation result
+                    CardValidationResult cardResult = consumerValidation.get();
+                    Card card = switch (cardResult) {
+                        case CardValidationResult.Success(Card c) -> c;
+                        case CardValidationResult.Failure(String msg) ->
+                            throw new com.example.services.ValidationException(msg);
+                    };
+
+                    // All validations passed - perform transfer
+                    // Re-establish CARD context for transfer
+                    return ScopedValue.where(CARD, card).call(() -> {
+                        balanceService.transfer();
+
                         long processingTime = System.currentTimeMillis() - startTime;
-                        logger.info("❌ SCOPED VALUES transaction failed: {} (in {}ms)",
-                                         message, processingTime);
-                        yield TransactionResult.failure(message, processingTime);
-                    }
-                };
+                        String transactionId = java.util.UUID.randomUUID().toString();
+                        logger.info("✅ SCOPED VALUES transaction completed: {} (in {}ms)",
+                                   transactionId, processingTime);
+                        return TransactionResult.success(transactionId, request.amount(), processingTime);
+                    });
+                }
 
             } catch (Exception e) {
                 long processingTime = System.currentTimeMillis() - startTime;
-                logger.info("💥 SCOPED VALUES transaction error: {} (in {}ms)",
-                                 e.getMessage(), processingTime);
-                return TransactionResult.failure("Processing error: " + e.getMessage(), processingTime);
+                String failureMessage = e.getMessage();
+                logger.info("❌ SCOPED VALUES transaction failed: {} (in {}ms)",
+                           failureMessage, processingTime);
+                return TransactionResult.failure(failureMessage, processingTime);
             }
+        });
+    }
+
+    /**
+     * Creates a validation task that throws ValidationException on failure.
+     * Pattern matches on ValidationResult and propagates failures as exceptions
+     * for fail-fast behavior in structured concurrency.
+     */
+    private void createValidationTask(
+        ScopedValidationService service,
+        StructuredTaskScope<Object, Void> scope
+    ) {
+        scope.fork(() -> {
+            ValidationResult result = service.validate();
+            if (result instanceof ValidationResult.Failure(String msg)) {
+                throw new com.example.services.ValidationException(msg);
+            }
+            return ValidationResult.success();
         });
     }
 }
