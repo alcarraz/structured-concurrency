@@ -22,13 +22,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Fail-fast Structured Concurrency implementation with parallel merchant and consumer validation,
- * followed by nested parallel card validations.
+ * Fail-fast Structured Concurrency implementation with merchant validation in parallel
+ * while consumer validation executes in the main thread.
  * <p>
  * Flow:
- * 1. Parallel: Validate Merchant AND Validate Card (fail-fast)
- * 2. Parallel (if card OK): Validate Balance, PIN, Expiration (fail-fast)
- * 3. Transfer (if all OK)
+ * 1. Fork merchant validation (runs in parallel)
+ * 2. Main thread: Validate Card (sequential prerequisite)
+ * 3. Nested parallel (if card OK): Validate Balance, PIN, Expiration (fail-fast)
+ * 4. Wait for merchant completion
+ * 5. Transfer (if all OK)
  * <p>
  * This demonstrates structured concurrency's automatic fail-fast and cancellation
  * capabilities - when any validation fails, remaining tasks are automatically cancelled.
@@ -66,43 +68,37 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
             // Step 1: Parallel - Validate Merchant AND Consumer (Card) with fail-fast
             try (var globalScope = StructuredTaskScope.open()) {
 
-                // Fork merchant validation
+                // Fork merchant validation (runs in parallel)
                 globalScope.fork(() -> {
                     if (merchantValidationService.validate(request) instanceof ValidationResult.Failure(String msg)) {
                         throw new ValidationException(msg);
                     }
                 });
 
-                // Fork consumer validation path (card + nested parallel validations)
-                StructuredTaskScope.Subtask<Card> consumerValidation = globalScope.fork(() -> {
-                    // First validate card
-                    CardValidationResult cardResult = cardValidationService.validate(request);
+                // Execute consumer validation directly in main thread
+                CardValidationResult cardResult = cardValidationService.validate(request);
 
-                    // Pattern match - throw exception on failure for fail-fast behavior
-                    Card card = switch (cardResult) {
-                        case CardValidationResult.Success(Card c) -> c;
-                        case CardValidationResult.Failure(String msg) -> throw new ValidationException(msg);
-                    };
+                // Pattern match - throw exception on failure for fail-fast behavior
+                Card card = switch (cardResult) {
+                    case CardValidationResult.Success(Card c) -> c;
+                    case CardValidationResult.Failure(String msg) -> throw new ValidationException(msg);
+                };
 
+                // Card is valid - open nested scope for parallel validations
+                try (var consumerScope = StructuredTaskScope.open()) {
+                    // Step 2: Parallel - Validate Balance, PIN, and Expiration with fail-fast (with Card)
+                    createCardAwareValidationTask(expirationService, request, card, consumerScope);
+                    createCardAwareValidationTask(pinValidationService, request, card, consumerScope);
+                    createCardAwareValidationTask(balanceService, request, card, consumerScope);
 
-                    // Continue with nested validations using card
-                    try (var consumerScope = StructuredTaskScope.open()) {
-                        // Step 2: Parallel - Validate Balance, PIN, and Expiration with fail-fast (with Card)
-                        createCardAwareValidationTask(expirationService, request, card, consumerScope);
-                        createCardAwareValidationTask(pinValidationService, request, card, consumerScope);
-                        createCardAwareValidationTask(balanceService, request, card, consumerScope);
+                    consumerScope.join();
+                }
 
-                        consumerScope.join();
-
-                        return card;
-                    }
-                });
-
-                // Wait for both parallel paths to complete
+                // Wait for merchant validation to complete
                 globalScope.join();
 
                 // Step 3: Transfer amount if all validations passed
-                balanceService.transfer(request, consumerValidation.get());
+                balanceService.transfer(request, card);
                 long processingTime = System.currentTimeMillis() - startTime;
 
                 String transactionId = UUID.randomUUID().toString();
@@ -113,7 +109,16 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
                 throw (e.getCause() instanceof RuntimeException re) ? re : e;
             }
 
+        } catch (ValidationException e) {
+            // Card validation or nested validation failed in main thread
+            balanceService.releaseAmount(request);
+            long processingTime = System.currentTimeMillis() - startTime;
+            logger.info("❌ FAIL-FAST STRUCTURED transaction failed: {} (in {}ms)",
+                       e.getMessage(), processingTime);
+            logger.debug("   ⚡ Other validations were automatically cancelled!");
+            return TransactionResult.failure(e.getMessage(), processingTime);
         } catch (StructuredTaskScope.FailedException e) {
+            // Merchant validation or other forked task failed
             balanceService.releaseAmount(request);
             long processingTime = System.currentTimeMillis() - startTime;
             String failureMessage = e.getCause().getMessage();
