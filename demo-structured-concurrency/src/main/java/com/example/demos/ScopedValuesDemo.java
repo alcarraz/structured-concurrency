@@ -35,7 +35,7 @@ public class ScopedValuesDemo {
 
         ScopedPaymentProcessor processor = new ScopedPaymentProcessor(
                 new ScopedCardValidationService(new CardRepository()),
-                new ScopedBalanceService(), 
+                new ScopedBalanceService(new CardRepository()), 
                 new ScopedExpirationService(),
                 new ScopedPinValidationService(),
                 new MerchantValidationService());

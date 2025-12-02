@@ -1,39 +1,23 @@
 package com.example.scopedvalues;
 
-import com.example.model.TransactionRequest;
 import com.example.model.ValidationResult;
-import com.example.utils.DemoUtil;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import com.example.repository.CardRepository;
+import com.example.services.BalanceService;
 
-public class ScopedBalanceService implements ScopedValidationService {
-    private static final Logger logger = LogManager.getLogger(ScopedBalanceService.class);
+// extends BalanceService only for simplification of code for the demo,
+// it should be a complete new implementation or using composition.
+public class ScopedBalanceService extends BalanceService implements ScopedValidationService {
+
+    public ScopedBalanceService(CardRepository cardRepository) {
+        super(cardRepository);
+    }
 
     public ValidationResult validate() {
-        // Access the scoped value directly - no parameter passing needed!
-        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
-
-        DemoUtil.simulateNetworkDelay(500);
-
-        // Simple check: fail if amount > 1000 for demo purposes
-        if (request.amount().doubleValue() > 1000) {
-            return ValidationResult.failure("Balance Check: Insufficient funds");
-        }
-
-        return ValidationResult.success();
+        return super.validate(ScopedPaymentProcessor.TRANSACTION_REQUEST.get(), ScopedPaymentProcessor.CARD.get());
     }
 
     public void transfer() {
-        // Access both request and card from scoped values - no parameter passing needed!
-        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
-
-        String cardNumber = request.cardNumber();
-        String merchant = request.merchant();
-
-        DemoUtil.simulateNetworkDelay(300);
-
-        logger.info("💸 Transferring {} from card {} to {}", request.amount(),
-                   cardNumber.substring(cardNumber.length() - 4), merchant);
+        super.transfer(ScopedPaymentProcessor.TRANSACTION_REQUEST.get(), ScopedPaymentProcessor.CARD.get());
     }
 
 }
