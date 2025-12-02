@@ -1,31 +1,96 @@
 \section{Temas avanzados}\label{sec:features-avanzados}
+\subsection{Best Practices: Patrones Recomendados}
+\begin{frame}
+    \small
+
+    \begin{exampleblock}{$\checkmark$ 1. Try-With-Resources Siempre}
+        \footnotesize
+        \begin{itemize}
+            \item Usa \texttt{try (var scope = ...)} para garantizar cleanup
+            \item El scope cancela tasks pendientes automáticamente
+            \item Evita leaks y garantiza resource management correcto
+        \end{itemize}
+    \end{exampleblock}
+
+    \begin{exampleblock}{$\checkmark$ 2. Manejo de Excepciones en Tareas}
+        \footnotesize
+        \begin{itemize}
+            \item Captura y maneja excepciones dentro de cada tarea forked
+            \item Usa joiner apropiado: fail-fast para críticos, awaitAll para recolección
+            \item Propaga contexto de error de forma clara
+        \end{itemize}
+    \end{exampleblock}
+
+    \begin{exampleblock}{$\checkmark$ 3. Scoped Values para Contexto}
+        \footnotesize
+        \begin{itemize}
+            \item Usa \texttt{ScopedValue} en lugar de ThreadLocal
+            \item Inmutable, thread-safe, heredado por tareas forked
+            \item Más eficiente con millones de virtual threads
+        \end{itemize}
+    \end{exampleblock}
+\end{frame}
+
+\subsection{Anti-Patterns: Lo Que NO Debes Hacer}
+\begin{frame}[fragile]
+    \footnotesize
+
+    \begin{alertblock}{$\times$ Leaking Tasks}
+        \footnotesize
+        \begin{itemize}
+            \item \textbf{NO hagas:} Fork tasks sin asegurarte de esperar \texttt{join()}
+            \item \textbf{Problema:} Tasks huérfanas, resource leaks
+            \item \textbf{Solución:} Siempre usa try-with-resources
+        \end{itemize}
+    \end{alertblock}
+
+    \begin{alertblock}{$\times$ Ignorar InterruptedException}
+        \footnotesize
+        \begin{itemize}
+            \item \textbf{NO hagas:} Catch vacío o sin lógica de cancelación
+            \item \textbf{Problema:} Los hilos dependen de interrupciones para cancelación
+            \item \textbf{Solución:}
+            Si no quieres relanzar la excepción, asegúrate de retornar lo más rápido posible y establecer la marca de interrupción
+        \end{itemize}
+        %! language = JShellLanguage
+        \begin{minted}{java}
+            try {
+             doSomething();
+            } catch (InterruptedException e) { 
+               Thread.currentThread().interrupt(); 
+            }
+        \end{minted}
+    \end{alertblock}
+
+\end{frame}
+
 
 \subsection{Custom Joiners: Estrategias de Coordinación}
 \begin{frame}[fragile]
-
-\begin{block}{Joiners Incluidos en Java 25}
-\begin{itemize}
-\item \texttt{allSuccessfulOrThrow()} - Fail-fast (por defecto con \texttt{open()})
-\item \texttt{awaitAll()} - Espera todas las tareas
-\item \texttt{anySuccessfulResultOrThrow()} - Primera tarea exitosa
-\item \texttt{allUntil(Instant)} - Todas las tareas hasta deadline
-\end{itemize}
-\end{block}
-
+\frametitle{Podemos implementar nuestros propios Joiners}
 %! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
-// Custom Joiner: Recoger solo N primeros resultados
+// Custom Joiner: Quorum de validación anti-fraude
 try (var scope = StructuredTaskScope.open(
-        Joiner.first(3))) {  // Espera primeros 3
+        Joiner.quorum(2, 3))) {  // 2 de 3 deben aprobar
 
-    for (int i = 0; i < 10; i++) {
-        scope.fork(() -> fetchData(i));
-    }
+    scope.fork(() -> fraudDetector1.check(transaction));
+    scope.fork(() -> fraudDetector2.check(transaction));
+    scope.fork(() -> fraudDetector3.check(transaction));
 
-    scope.join();  // Retorna cuando hay 3 exitosos
-    List<Result> first3 = scope.results();
+    scope.join();
+    boolean approved = scope.result();  // Decisión por mayoría
 }
 \end{minted}
+
+\begin{exampleblock}{¿Por qué Custom Joiner?}
+    \footnotesize
+    \begin{itemize}
+        \item \texttt{allUntil(Predicate)} siempre retorna \texttt{Stream<Subtask<T>>}
+        \item Custom Joiner permite retornar tipos personalizados (\texttt{Boolean}, agregaciones, etc.)
+        \item Implementa lógica de coordinación sofisticada: voting, quorum, best-result
+    \end{itemize}
+\end{exampleblock}
 \end{frame}
 
 \subsection{Scopes anidados: Composición Jerárquica}
@@ -60,17 +125,16 @@ Cancela automáticamente TODOS los scopes anidados si falla el padre
 
 %! language = JShellLanguage
 \begin{minted}[fontsize=\footnotesize]{java}
-// Timeout con Instant deadline
-Instant deadline = Instant.now().plus(Duration.ofSeconds(5));
-
+// Timeout con Configuration API (Java 25)
 try (var scope = StructuredTaskScope.open(
-        Joiner.allUntil(deadline))) {
+        Joiner.allSuccessfulOrThrow(),
+        config -> config.withTimeout(Duration.ofSeconds(5)))) {
 
     var result1 = scope.fork(() -> slowOperation1());
     var result2 = scope.fork(() -> slowOperation2());
     var result3 = scope.fork(() -> slowOperation3());
 
-    scope.join();  // Cancela todos si pasa el deadline
+    scope.join();  // Cancela todos si se excede el timeout
 
     return combineResults(
         result1.get(), result2.get(), result3.get());
@@ -80,69 +144,5 @@ try (var scope = StructuredTaskScope.open(
         "Timeout: operations took longer than 5 seconds");
 }
 \end{minted}
-\end{frame}
-
-\subsection{Anti-Patterns: Lo Que NO Debes Hacer}
-\begin{frame}
-\footnotesize
-
-\begin{alertblock}{$\times$ Anti-Pattern 1: Leaking Tasks}
-\footnotesize
-\begin{itemize}
-\item \textbf{NO hagas:} Fork tasks sin esperar \texttt{join()}
-\item \textbf{Problema:} Tasks huérfanas, resource leaks
-\item \textbf{Solución:} Siempre usa try-with-resources
-\end{itemize}
-\end{alertblock}
-
-\begin{alertblock}{$\times$ Anti-Pattern 2: Thread Pools con Virtual Threads}
-\footnotesize
-\begin{itemize}
-\item \textbf{NO hagas:} \texttt{Executors.newFixedThreadPool(...)} para VTs
-\item \textbf{Problema:} Overhead innecesario, los VTs no necesitan pooling
-\item \textbf{Solución:} Crea VTs directamente con \texttt{Thread.ofVirtual()}
-\end{itemize}
-\end{alertblock}
-
-\begin{alertblock}{$\times$ Anti-Pattern 3: Ignorar InterruptedException}
-\footnotesize
-\begin{itemize}
-\item \textbf{NO hagas:} Catch vacío o sin lógica de cancelación
-\item \textbf{Problema:} VTs dependen de interrupciones para cancelación
-\item \textbf{Solución:} Maneja interrupciones en tareas forked
-\end{itemize}
-\end{alertblock}
-\end{frame}
-
-\subsection{Best Practices: Patrones Recomendados}
-\begin{frame}
-\small
-
-\begin{exampleblock}{$\checkmark$ 1. Try-With-Resources Siempre} 
-    \footnotesize
-\begin{itemize}
-\item Usa \texttt{try (var scope = ...)} para garantizar cleanup
-\item El scope cancela tasks pendientes automáticamente
-\item Evita leaks y garantiza resource management correcto
-\end{itemize}
-\end{exampleblock}
-
-\begin{exampleblock}{$\checkmark$ 2. Manejo de Excepciones en Tareas}
-    \footnotesize
-\begin{itemize}
-\item Captura y maneja excepciones dentro de cada tarea forked
-\item Usa joiner apropiado: fail-fast para críticos, awaitAll para recolección
-\item Propaga contexto de error de forma clara
-\end{itemize}
-\end{exampleblock}
-
-\begin{exampleblock}{$\checkmark$ 3. Scoped Values para Contexto}
-    \footnotesize
-\begin{itemize}
-\item Usa \texttt{ScopedValue} en lugar de ThreadLocal
-\item Inmutable, thread-safe, heredado por tareas forked
-\item Más eficiente con millones de virtual threads
-\end{itemize}
-\end{exampleblock}
 \end{frame}
 
