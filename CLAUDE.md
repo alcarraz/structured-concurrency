@@ -1,4 +1,4 @@
-# JConf 2024 - Structured Concurrency in Java 25
+# JConf 2025 - Structured Concurrency in Java 25
 
 This repository contains materials for the JConf 2024 presentation on Structured Concurrency in Java 25, demonstrating the advantages of structured concurrency over traditional reactive programming patterns.
 
@@ -120,3 +120,4 @@ Java Demo Code → Referenced in Presentation → Live Demo During Talk
 
 - Java demos and API documentation: [`demo-structured-concurrency/CLAUDE.md`](demo-structured-concurrency/CLAUDE.md)
 - Presentation build and validation: [`presentacion/CLAUDE.md`](presentacion/CLAUDE.md)
+- scoped value is a must in this presentation, it's part of the title. Don't forget

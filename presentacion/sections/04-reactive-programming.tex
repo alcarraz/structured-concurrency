@@ -1,90 +1,18 @@
-\section{Implementación reactiva}\label{sec:el-problema:-reactive-programming}
-
-\subsection{Código de ejemplo}
-\begin{frame}[fragile]
-    \begin{minted}[fontsize=\scriptsize]{java}
-public CompletableFuture<TransactionResult> processTransaction(TransactionRequest request) {
-    // PATH A: Merchant validation
-    CompletableFuture<ValidationResult> merchantValidation =
-        CompletableFuture.supplyAsync(() -> merchantValidationService.validate(request));
-    // PATH B: Consumer validation (card → nested parallel validations)
-    CompletableFuture<ValidationResult> consumerValidation =
-        CompletableFuture.supplyAsync(() -> {
-            ValidationResult cardResult = cardValidationService.validate(request);
-            if (!cardResult.success()) return cardResult;
-            var validations = cardValidations.stream()  // Nested parallel: balance, PIN, expiration
-                .map(s -> CompletableFuture.supplyAsync(() -> s.validate(request)))
-                .toList();
-            CompletableFuture.allOf(validations.toArray(new CompletableFuture[0])).join();
-        });
-    // Process results and perform transfer if approved
-    return CompletableFuture.allOf(merchantValidation, consumerValidation).thenCompose(_ -> {
-            Stream.of(merchantValidation, consumerValidation).map(CompletableFuture::join)
-                .filter(r -> !r.success()).findFirst()
-                .map(failure -> { balanceService.releaseAmount(request);
-                    return CompletableFuture.completedFuture( TransactionResult.failure(...));                    
-                }).orElseGet(() -> CompletableFuture.runAsync(
-                        () -> balanceService.transfer(request))
-                ).thenApply(_ -> TransactionResult.success(...));
-        });
-}
-    \end{minted}
-\end{frame}
+\section{Programación reactiva}\label{sec:el-problema:-reactive-programming}
 
 \begin{frame}
     \frametitle{Problemas del Enfoque Reactivo}
-    \begin{alertblock}{Complejidad Innecesaria}
-        \begin{itemize}
-            \item \textbf{Callback Hell:} Lógica anidada difícil de seguir
-            \item \textbf{Manejo de Errores:} Excepciones complejas con \texttt{CompletionException}
-            \item \textbf{Manejo de recursos:} Difícil garantizar cleanup
-            \item \textbf{Depuración:} Stack traces confusos
-            \item \textbf{Carga cognitiva:} Alto costo mental para leer/mantener
-        \end{itemize}
-    \end{alertblock}
+    \begin{itemize} [<+->]
+        \item \textbf{Legibilidad:} Callback Hell $\rightarrow ~$ Lógica anidada difícil de seguir
+        \item \textbf{Manejo de recursos:} No es trivial garantizar su liberación.
+        \item \textbf{Excepciones:} Trazas del stack confusas, pueden saltar en el framework en lugar del código que ls genera
+        \item \textbf{Carga cognitiva:} Alto costo mental para entender el código
+        \item \textbf{Mantenibilidad:} Lógica de negocio mezclada con la lógica de control.
+        \item \textbf{Depuración:} Difícil de seguir la secuencia de instrucciones.
+    \end{itemize}
 
-    \begin{exampleblock}{Resultado}
-        \begin{itemize}
-            \item Rendimiento: Ejecución paralela
-            \item Legibilidad: Código complejo
-            \item Mantenibilidad: Lógica de negocio mezclada con la lógica de control.
-            \item Testing: Complicado de probar
-        \end{itemize}
-    \end{exampleblock}
-\end{frame}
-
-\subsection{Demo: Reactive Basic con REST API}
-\begin{frame}[fragile]
-    \begin{block}{Probemos el approach reactivo}
-        \begin{minted}[fontsize=\scriptsize]{bash}
-curl -X POST http://localhost:8080/api/reactive/basic \
-  -H "Content-Type: application/json" \
-  -d '{
-    "cardNumber": "1234-5678-9012-3456",
-    "expirationDate": "2512",
-    "pin": "1234",
-    "amount": 100.00,
-    "merchant": "Demo Store"
-  }'
-        \end{minted}
-    \end{block}
-
-
-    \begin{exampleblock}{Respuesta esperada}
-        \begin{minted}[fontsize=\tiny]{json}
-{
-  "success": true,
-  "transactionId": "uuid-here",
-  "amount": 100.00,
-  "message": "Transaction processed successfully",
-  "processingTimeMs": 520
-}
-        \end{minted}
-    \end{exampleblock}
-
-    \begin{alertblock}{Observa}
-        Funciona... pero el código es complejo.
-        ¿Hay una mejor forma?
-    \end{alertblock}
+    \begin{center}
+        \onslide<+->{\Large{\textcolor{orange}{$\blacktriangleright$ Veamos un código de ejemplo}}}
+    \end{center}
 \end{frame}
 

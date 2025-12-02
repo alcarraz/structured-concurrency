@@ -16,7 +16,7 @@ src_extensions=.tex .ltx .latex .dtx .ins
 
 [Tools]
 MakeIndex=
-QuickBuild=
+QuickBuild=LuaLaTeX+ForwardPDF
 
 [item:presentacion.cls]
 archive=true
@@ -54,13 +54,31 @@ encoding=
 highlight=
 mode=
 
+[item:sections/04-reactive-programming.tex]
+archive=true
+encoding=
+highlight=
+mode=
+
 [item:sections/05-solution.tex]
 archive=true
 encoding=
 highlight=
 mode=
 
+[item:sections/05-structured-concrrency.tex]
+archive=true
+encoding=
+highlight=
+mode=
+
 [item:sections/06-demo-structured.tex]
+archive=true
+encoding=
+highlight=
+mode=
+
+[item:sections/06-fail-fast.tex]
 archive=true
 encoding=
 highlight=

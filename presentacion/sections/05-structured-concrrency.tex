@@ -1,109 +1,20 @@
 \section{Concurrencia Estructurada}\label{sec:la-solucion:-structured-concurrency}
-\subsection{Ejemplo}
-\begin{frame}[fragile]
-\begin{minted}[fontsize=\scriptsize]{java}
-public TransactionResult processTransaction(TransactionRequest request) throws InterruptedException {
-    try (var globalScope = StructuredTaskScope.open(Joiner.allSuccessfulOrThrow())) {
-        // PATH A: Merchant validation
-        globalScope.fork(() -> merchantValidationService.validate(request));
-        // PATH B: Consumer validation (card → nested parallel validations)
-        globalScope.fork(() -> {
-            ValidationResult cardResult = cardValidationService.validate(request);
-            if (!cardResult.success()) return cardResult;
-            // Nested parallel: balance, PIN, expiration
-            try (var consumerScope = StructuredTaskScope.open(Joiner.allSuccessfulOrThrow())) {
-                cardValidations.forEach(s -> consumerScope.fork(() -> s.validate(request)));
-                return consumerScope.join().map(Subtask::get)
-                    .filter(r -> !r.success()).findFirst().orElse(SUCCESS);
-            }
-        });
 
-        // Process results and perform transfer if approved
-        return globalScope.join().map(Subtask::get).filter(r -> !r.success()).findFirst()
-            .map(failure -> { balanceService.releaseAmount(request);
-                             return TransactionResult.failure( ...); })
-            .orElseGet(() -> { balanceService.transfer(request);
-                               return TransactionResult.success(...); });
-    }
-}
-\end{minted}
-\end{frame}
-\subsection{Características}
 \begin{frame}
-\begin{exampleblock}{Simplicidad y Poder}
-\begin{itemize}
-\item \textbf{Código Legible:} Se lee como se ejecuta.
-\item \textbf{Manejo de errores simple:} Excepciones tradicionales.
-\item \textbf{Manejo de recursos:} Try-with-resources automático.
-\item \textbf{Depuración:} Stack traces normales.
-\item \textbf{Rendimiento:} Misma ejecución paralela.
-\end{itemize}
-\end{exampleblock}
 
-\begin{block}{Principios Clave}
-\begin{itemize}
-\item \textbf{Ciclo de vida estructurado:} Tareas anidadas mueren con el alcance.
-\item \textbf{Fallar tempranamente por defecto:} \texttt{open()} cancela automáticamente si una tarea falla.
-\item \textbf{Opcionalmente, esperar por todos:} \texttt{open(awaitAll())} para recopilar todos los resultados.
-\item \textbf{Observabilidad:} Mejor monitoreo y depuración, volcado estructurado de hilos.
-\end{itemize}
-\end{block}
-\end{frame}
-
-%\begin{frame}[fragile]
-%%! language = JShellLanguage
-%\begin{minted}[fontsize=\footnotesize]{java}
-%// FAIL-FAST: Cancela automáticamente al primer fallo
-%try (var scope = StructuredTaskScope.open()) {
-%    var balanceTask = scope.fork(() -> {
-%        ValidationResult result = balanceService.validate(request.cardNumber(), request.amount());
-%        if (!result.success())
-%            throw new RuntimeException(result.message());
-%        return result;
-%    });
-%    // ... más validaciones
-%
-%    scope.join();  // Cancela tareas restantes al primer fallo
-%
-%    ValidationResult debitResult = balanceService.debit(request.cardNumber(), request.amount());
-%    return TransactionResult.success(xxx);
-%
-%} catch (StructuredTaskScope.FailedException e) {
-%    return TransactionResult.failure("FAIL-FAST: " + e.getMessage());
-%}
-%\end{minted}
-%\end{frame}
-\subsection{Demo: Structured Concurrency con REST API}
-\begin{frame}[fragile]
-    \begin{block}{Probemos Structured Concurrency}
-        \begin{minted}[fontsize=\scriptsize]{bash}
-curl -X POST http://localhost:8080/api/structured/normal \
-  -H "Content-Type: application/json" \
-  -d '{
-    "cardNumber": "1234-5678-9012-3456",
-    "expirationDate": "2512",
-    "pin": "1234",
-    "amount": 100.00,
-    "merchant": "Demo Store"
-  }'
-        \end{minted}
-    \end{block}
+        \begin{itemize}[<+->]
+            \item \textbf{Código Legible:} Se lee como se ejecuta
+            \item \textbf{Manejo de recursos:} Try-with-resources automático
+            \item \textbf{Depuración:} Las trazas del stack muestran dónde se produce el error.
+            \item \textbf{Rendimiento:} Ejecución paralela similar, no se pierde.
+            \item \textbf{Ciclo de vida estructurado:} Tareas anidadas mueren con el alcance
+            \item \textbf{Fallar tempranamente por defecto:} \texttt{open()} cancela automáticamente si una tarea tira una excepción.
+            \item \textbf{Observabilidad:} Mejor monitoreo y depuración, volcado estructurado de hilos
+        \end{itemize}
 
 
-    \begin{exampleblock}{Respuesta esperada}
-        \begin{minted}[fontsize=\tiny]{json}
-{
-  "success": true,
-  "transactionId": "uuid-here",
-  "amount": 100.00,
-  "message": "Transaction processed successfully",
-  "processingTimeMs": 520
-}
-        \end{minted}
-    \end{exampleblock}
-
-    \begin{alertblock}{¡Mismo performance, código más simple!}
-        Sin callbacks, código que lee como se ejecuta.
-    \end{alertblock}
+    \begin{center}
+        \onslide<+->{\Large{\textcolor{green}{$\blacktriangleright$ Show me the code!!}}}
+    \end{center}
 \end{frame}
 

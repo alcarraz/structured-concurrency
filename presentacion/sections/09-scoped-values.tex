@@ -1,81 +1,32 @@
 \section{Scoped Values}
 
-\begin{frame}[fragile]
-\begin{minted}[fontsize=\scriptsize]{java}
-public class ScopedPaymentProcessor {
-    public static final ScopedValue<TransactionRequest> TRANSACTION_REQUEST = ScopedValue.newInstance();
-    public TransactionResult processTransaction(TransactionRequest request) {
-        return ScopedValue.where(TRANSACTION_REQUEST, request).call(() -> {
-            ValidationResult cardResult = cardValidationService.validate();
-            if (!cardResult.success()) {
-                auditLog("Transaction failed: " + cardResult.message());
-                return TransactionResult.failure(cardResult.message());
-            }
-            try (var scope = StructuredTaskScope.open(StructuredTaskScope.Joiner.awaitAll())) {
-                var balanceTask = scope.fork(balanceService::validate);  // ¡Sin parámetros!
-                // ... más validaciones
-                scope.join();
-                checkResults(xxx);
-                ValidationResult debitResult = balanceService.debit();
-                return debitResult.success() ? TransactionResult.success(xxx) : TransactionResult.failure(xxx);
-            }
-        });
-    }
-}
-\end{minted}
-\end{frame}
-
-\begin{frame}[fragile,plain]
-\begin{minted}[fontsize=\tiny]{java}
-public class ScopedBalanceService {
-    public ValidationResult validate() {
-        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();  // ¡Sin parámetros!
-        String cardNumber = request.cardNumber();
-        auditLog("Starting balance validation for card: " + cardNumber.substring(cardNumber.length() - 4));
-        DemoUtil.simulateNetworkDelay(500);
-        if (request.amount().doubleValue() > 1000) {
-            auditLog("Balance validation failed: Insufficient funds");
-            return ValidationResult.failure("Balance Check: Insufficient funds");
-        }
-
-        auditLog("Balance validation successful");
-        return ValidationResult.success("Balance Check: Validation successful");
-    }
-
-    public ValidationResult debit() {
-        TransactionRequest request = ScopedPaymentProcessor.TRANSACTION_REQUEST.get();
-        String cardNumber = request.cardNumber();
-        auditLog("Starting debit for card: " + cardNumber.substring(cardNumber.length() - 4));
-        DemoUtil.simulateNetworkDelay(300);
-        return ValidationResult.success("Balance Debit: Amount successfully debited");
-    }
-}
-\end{minted}
-
-\begin{exampleblock}{$\blacktriangleright$ ¡Scoped Values son ESTABLES en Java 25!}
-No más ThreadLocal ni parameter drilling. 
-\textcolor{green}{\textbf{JEP 506}}: ¡Propagación automática de contexto pronta para usar en producción!
-\end{exampleblock}
-\end{frame}
-
 \begin{frame}
-    \frametitle{Demo: Scoped Values en Acción}
-    \begin{center}
-        \Large{Propagación de contexto automática}
-    \end{center}
+    \frametitle{Scoped Values = Contexto Sin Parameter Drilling}
 
-    \begin{exampleblock}{¿Qué veremos?}
+    \begin{exampleblock}{El Problema}
+        \textbf{¿Cómo pasar contexto (audit info, request ID, user context) a través de validaciones paralelas?}
         \begin{itemize}
-            \item Definición de \texttt{ScopedValue<TransactionRequest>}
-            \item Propagación automática a través de \texttt{scope.fork()}
-            \item Acceso directo con \texttt{TRANSACTION\_REQUEST.get()}
-            \item Audit logs con los datos del request
-            \item Integración perfecta con Concurrencia Estructurada.
+            \item \textbf{Parameter drilling}: Pasar en cada firma de método (verbose, invasivo)
+            \item \textbf{ThreadLocal}: Problemático con hilos virtuales masivos
         \end{itemize}
     \end{exampleblock}
 
-    \begin{alertblock}{Sin Scoped Values}
-        \textbf{Necesitarías:}
-        Pasar datos del \texttt{TransactionRequest} como parámetros a cada método, o usar ThreadLocal (problemático con hilos virtuales masivos).
+    \begin{block}{La Solución: Scoped Values}
+        \begin{itemize}
+            \item \textbf{Propagación automática}: \texttt{ScopedValue.where(KEY, value).run(...)}
+            \item \textbf{Acceso directo}: \texttt{KEY.get()} desde cualquier método
+            \item \textbf{Thread-safe}: Funciona perfectamente con structured concurrency
+            \item \textbf{Casos de uso}: Audit trails, request IDs, user context, tracing
+        \end{itemize}
+    \end{block}
+
+    \begin{alertblock}{$\blacktriangleright$ ¡ESTABLE en Java 25!}
+        \textcolor{green}{\textbf{JEP 506}}: Scoped Values están ESTABLES. \\
+        ¡Usa esta funcionalidad en producción HOY!
     \end{alertblock}
+
+    \begin{center}
+        \Large{\textcolor{blue}{$\blacktriangleright$ Veamos la propagación de contexto en vivo...}}
+    \end{center}
 \end{frame}
+
