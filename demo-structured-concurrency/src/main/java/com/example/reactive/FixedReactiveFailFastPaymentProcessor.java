@@ -79,15 +79,22 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                 };
 
                 // B2: Nested parallel validations with TRUE fail-fast coordination (with Card)
-                // Create a future that completes as soon as we know the final outcome
                 CompletableFuture<Card> failFast = new CompletableFuture<>();
 
-                // Create validation futures that notify the failFast future
+                // Create validation futures with exception handlers
                 List<CompletableFuture<ValidationResult>> futures = List.of(
                         validationTask(expirationService, request, card),
                         validationTask(pinValidationService, request, card),
                         validationTask(balanceService, request, card)
                 );
+
+                // Set up handlers for each future to complete failFast on first failure
+                for (CompletableFuture<ValidationResult> future : futures) {
+                    future.exceptionally(throwable -> {
+                        failFast.completeExceptionally(throwable);
+                        return null;  // Return value doesn't matter, failFast is already completed
+                    });
+                }
 
                 // When all validations complete successfully, complete failFast with Card
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
@@ -97,8 +104,7 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
                         }
                     });
 
-                // Return the failFast future - it completes as soon as we know the outcome
-                // (first failure OR all successes)
+                // Return the failFast future - completes on first failure OR all successes
                 try {
                     return failFast.join();
                 } catch (CompletionException e) {
@@ -133,6 +139,9 @@ public class FixedReactiveFailFastPaymentProcessor implements ReactivePaymentPro
             .exceptionally(throwable -> {
                 long processingTime = System.currentTimeMillis() - startTime;
                 String reason = throwable.getMessage();
+
+                // Release any locked balance
+                balanceService.releaseAmount(request);
 
                 logger.info("❌ FIXED REACTIVE FAIL-FAST transaction failed: {} (in {}ms)",
                            reason, processingTime);
