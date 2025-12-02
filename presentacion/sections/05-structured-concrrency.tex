@@ -17,4 +17,31 @@
         \onslide<+->{\Large{\textcolor{green}{$\blacktriangleright$ Show me the code!!}}}
     \end{center}
 \end{frame}
+\subsection{Joiners: Estrategias de Coordinación}
+\begin{frame}[fragile]
+
+    \begin{itemize}%[<+->]
+        \item \texttt{awaitAllSuccessfulOrThrow()} 
+        \begin{itemize}
+            \item Fail-fast 
+            \item Por defecto para \texttt{open()} sin argumentos
+        \end{itemize}
+        \item \texttt{allSuccessfulOrThrow}
+        \begin{itemize}
+            \item Igual que el anterior, para cuando todas las tareas deben de retornarretornan el mismo tipo. 
+            \item `join()` devuelve un stream de resultados
+        \end{itemize}
+        \item \texttt{awaitAll()} 
+        \begin{itemize}
+            \item  Espera por todas las tareas, incluso si una tira excepción.
+            \item Útil para cuando no debemos cancelar tareas en proceso.
+        \end{itemize}
+        \item \texttt{anySuccessfulResultOrThrow()}
+        \begin{itemize}
+            \item Termina con la primer tarea sin error.
+            \item Útil para cuando queremos obtener un recurso de varios lugares y nos sirve cualquiera.
+        \end{itemize}
+        \item \texttt{allUntil(Predicate<Subtask>)} - Termina cuando todas las tareas terminan o el predicado retorna true.
+    \end{itemize}
+\end{frame}
 
