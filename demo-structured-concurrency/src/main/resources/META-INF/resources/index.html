@@ -522,26 +522,50 @@
 
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Versión Reactive</label>
-                            <select id="reactiveVersion">
-                                <option value="basic">Basic (allOf - espera todas)</option>
-                                <option value="with-exceptions">Con Excepciones (espera todas)</option>
-                                <option value="fail-fast" selected>Fail-Fast Manual (complejo)</option>
+                            <label>Procesador 1</label>
+                            <select id="processor1">
+                                <optgroup label="Reactive (CompletableFuture)">
+                                    <option value="reactive/basic">Basic - allOf (espera todas)</option>
+                                    <option value="reactive/with-exceptions">Con Excepciones (espera todas)</option>
+                                    <option value="reactive/fail-fast" selected>Fail-Fast Manual (complejo)</option>
+                                </optgroup>
+                                <optgroup label="Structured Concurrency">
+                                    <option value="structured/normal">Normal - awaitAll (espera todas)</option>
+                                    <option value="structured/fail-fast">Fail-Fast Automático</option>
+                                </optgroup>
+                                <optgroup label="Scoped Values">
+                                    <option value="scoped/fail-fast">Fail-Fast con Scoped Values</option>
+                                </optgroup>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label>Versión Structured</label>
-                            <select id="structuredVersion">
-                                <option value="normal">Normal (awaitAll - espera todas)</option>
-                                <option value="fail-fast" selected>Fail-Fast Automático</option>
+                            <label>Procesador 2</label>
+                            <select id="processor2">
+                                <optgroup label="Reactive (CompletableFuture)">
+                                    <option value="reactive/basic">Basic - allOf (espera todas)</option>
+                                    <option value="reactive/with-exceptions">Con Excepciones (espera todas)</option>
+                                    <option value="reactive/fail-fast">Fail-Fast Manual (complejo)</option>
+                                </optgroup>
+                                <optgroup label="Structured Concurrency">
+                                    <option value="structured/normal">Normal - awaitAll (espera todas)</option>
+                                    <option value="structured/fail-fast" selected>Fail-Fast Automático</option>
+                                </optgroup>
+                                <optgroup label="Scoped Values">
+                                    <option value="scoped/fail-fast">Fail-Fast con Scoped Values</option>
+                                </optgroup>
                             </select>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary full-width">
-                        ⚡ Comparar Reactive vs Structured
-                    </button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px;">
+                        <button type="button" class="btn btn-primary" onclick="executeSingle()">
+                            ⚡ Ejecutar Único
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            ⚖️ Comparar Procesadores
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -946,23 +970,24 @@
             return await response.json();
         }
 
-        // Get version label
-        function getVersionLabel(version) {
+        // Get processor label for display
+        function getProcessorLabel(processorValue) {
             const labels = {
-                'basic': 'Basic',
-                'with-exceptions': 'Con Excepciones',
-                'fail-fast': 'Fail-Fast',
-                'normal': 'Normal'
+                'reactive/basic': 'Reactive Basic',
+                'reactive/with-exceptions': 'Reactive con Excepciones',
+                'reactive/fail-fast': 'Reactive Fail-Fast',
+                'structured/normal': 'Structured Normal',
+                'structured/fail-fast': 'Structured Fail-Fast',
+                'scoped/fail-fast': 'Scoped Values'
             };
-            return labels[version] || version;
+            return labels[processorValue] || processorValue;
         }
 
         // Mostrar resultado
-        function displayResult(containerId, result, version) {
+        function displayResult(containerId, result, processorLabel) {
             const success = result.success;
-            const versionLabel = getVersionLabel(version);
             const html = `
-                <div class="version-badge">${versionLabel}</div>
+                <div class="version-badge">${processorLabel}</div>
                 <div class="metric">
                     <span class="metric-label">Estado</span>
                     <span class="metric-value ${success ? 'success' : 'failure'}">
@@ -987,35 +1012,78 @@
             document.getElementById(containerId).innerHTML = html;
         }
 
+        // Ejecutar un solo procesador
+        async function executeSingle() {
+            const request = {
+                cardNumber: document.getElementById('cardNumber').value,
+                expirationDate: document.getElementById('expirationDate').value,
+                pin: document.getElementById('pin').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                merchant: document.getElementById('merchant').value
+            };
+
+            const processor = document.getElementById('processor1').value;
+            const processorLabel = getProcessorLabel(processor);
+
+            // Mostrar panel de resultados
+            document.getElementById('resultsContainer').classList.remove('hidden');
+
+            // Mostrar solo el primer resultado, ocultar el segundo
+            document.querySelector('.result-box.reactive').style.display = 'block';
+            document.querySelector('.result-box.structured').style.display = 'none';
+
+            // Actualizar header del primer resultado
+            document.querySelector('.result-box.reactive h3').textContent = `⚡ ${processorLabel}`;
+
+            document.getElementById('reactiveResults').innerHTML = `
+                <div class="loading"><div class="spinner"></div>Procesando...</div>
+            `;
+            document.getElementById('improvement').classList.add('hidden');
+
+            try {
+                const result = await processTransaction(processor, request);
+                displayResult('reactiveResults', result, processorLabel);
+
+                // Recargar tarjetas
+                setTimeout(loadCards, 500);
+            } catch (error) {
+                document.getElementById('reactiveResults').innerHTML = `
+                    <div class="error">Error: ${error.message}</div>
+                `;
+            }
+        }
+
         // Mostrar mejora
-        function displayImprovement(reactiveTime, structuredTime, reactiveVersion, structuredVersion) {
-            if (reactiveTime > structuredTime) {
-                const improvement = ((reactiveTime - structuredTime) / reactiveTime * 100).toFixed(0);
+        function displayImprovement(result1, result2, label1, label2) {
+            const time1 = result1.processingTimeMs;
+            const time2 = result2.processingTimeMs;
+
+            if (time1 > time2) {
+                const improvement = ((time1 - time2) / time1 * 100).toFixed(0);
                 document.getElementById('improvement').innerHTML = `
-                    <h3>🎉 ¡Structured (${getVersionLabel(structuredVersion)}) es más rápido!</h3>
+                    <h3>🎉 ¡${label2} es más rápido!</h3>
                     <div class="percentage">${improvement}% más rápido</div>
-                    <p>Reactive (${getVersionLabel(reactiveVersion)}): ${reactiveTime}ms |
-                       Structured (${getVersionLabel(structuredVersion)}): ${structuredTime}ms</p>
+                    <p>${label1}: ${time1}ms | ${label2}: ${time2}ms</p>
                 `;
                 document.getElementById('improvement').classList.remove('hidden');
-            } else if (structuredTime > reactiveTime) {
-                const diff = ((structuredTime - reactiveTime) / structuredTime * 100).toFixed(0);
+            } else if (time2 > time1) {
+                const improvement = ((time2 - time1) / time2 * 100).toFixed(0);
                 document.getElementById('improvement').innerHTML = `
-                    <h3>⚠️ Reactive (${getVersionLabel(reactiveVersion)}) fue más rápido</h3>
-                    <div class="percentage">${diff}% más rápido</div>
-                    <p>Probablemente porque ambos están esperando todas las validaciones</p>
+                    <h3>🎉 ¡${label1} es más rápido!</h3>
+                    <div class="percentage">${improvement}% más rápido</div>
+                    <p>${label1}: ${time1}ms | ${label2}: ${time2}ms</p>
                 `;
                 document.getElementById('improvement').classList.remove('hidden');
             } else {
                 document.getElementById('improvement').innerHTML = `
                     <h3>⚖️ Performance similar</h3>
-                    <p>Ambas versiones tienen tiempos comparables (~${reactiveTime}ms)</p>
+                    <p>Ambos procesadores tienen tiempos comparables (~${time1}ms)</p>
                 `;
                 document.getElementById('improvement').classList.remove('hidden');
             }
         }
 
-        // Manejar envío de formulario
+        // Manejar envío de formulario (comparación)
         document.getElementById('transactionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -1027,12 +1095,23 @@
                 merchant: document.getElementById('merchant').value
             };
 
-            // Get selected versions
-            const reactiveVersion = document.getElementById('reactiveVersion').value;
-            const structuredVersion = document.getElementById('structuredVersion').value;
+            // Get selected processors
+            const processor1 = document.getElementById('processor1').value;
+            const processor2 = document.getElementById('processor2').value;
+            const label1 = getProcessorLabel(processor1);
+            const label2 = getProcessorLabel(processor2);
 
             // Mostrar panel de resultados
             document.getElementById('resultsContainer').classList.remove('hidden');
+
+            // Mostrar ambos resultados
+            document.querySelector('.result-box.reactive').style.display = 'block';
+            document.querySelector('.result-box.structured').style.display = 'block';
+
+            // Actualizar headers dinámicamente
+            document.querySelector('.result-box.reactive h3').textContent = `🔴 ${label1}`;
+            document.querySelector('.result-box.structured h3').textContent = `🟢 ${label2}`;
+
             document.getElementById('reactiveResults').innerHTML = `
                 <div class="loading"><div class="spinner"></div>Procesando...</div>
             `;
@@ -1042,15 +1121,15 @@
             document.getElementById('improvement').classList.add('hidden');
 
             try {
-                // Ejecutar ambas en paralelo con las versiones seleccionadas
-                const [reactiveResult, structuredResult] = await Promise.all([
-                    processTransaction(`reactive/${reactiveVersion}`, request),
-                    processTransaction(`structured/${structuredVersion}`, request)
+                // Ejecutar ambos en paralelo
+                const [result1, result2] = await Promise.all([
+                    processTransaction(processor1, request),
+                    processTransaction(processor2, request)
                 ]);
 
-                displayResult('reactiveResults', reactiveResult, reactiveVersion);
-                displayResult('structuredResults', structuredResult, structuredVersion);
-                displayImprovement(reactiveResult.processingTimeMs, structuredResult.processingTimeMs, reactiveVersion, structuredVersion);
+                displayResult('reactiveResults', result1, label1);
+                displayResult('structuredResults', result2, label2);
+                displayImprovement(result1, result2, label1, label2);
 
                 // Recargar tarjetas
                 setTimeout(loadCards, 500);
