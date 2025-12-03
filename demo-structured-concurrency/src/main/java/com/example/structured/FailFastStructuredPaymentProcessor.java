@@ -109,8 +109,6 @@ public class FailFastStructuredPaymentProcessor implements StructuredProcessor {
                 logger.info("✅ FAIL-FAST STRUCTURED transaction completed: {} (in {}ms)",
                         transactionId, processingTime);
                 return TransactionResult.success(transactionId, request.amount(), processingTime);
-            } catch (StructuredTaskScope.FailedException e) {
-                throw (e.getCause() instanceof RuntimeException re) ? re : e;
             }
 
         } catch (StructuredTaskScope.FailedException e) {

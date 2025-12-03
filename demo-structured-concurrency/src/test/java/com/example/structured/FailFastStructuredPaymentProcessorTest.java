@@ -10,8 +10,6 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -100,5 +98,10 @@ class FailFastStructuredPaymentProcessorTest extends BaseProcessorTest {
 
         assertFalse(result.success());
         assertTrue(result.message().contains("Merchant"));
+        assertTimingWithinRange(
+            result.processingTimeMs(),
+            ServiceDelays.MERCHANT_VALIDATION_DELAY,  // 500ms
+            "Fail-fast merchant validation"
+        );
     }
 }
