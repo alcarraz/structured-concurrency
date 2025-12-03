@@ -5,11 +5,15 @@ import com.example.model.CardValidationResult;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.model.ValidationResult;
+import com.example.repository.CardRepository;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.concurrent.StructuredTaskScope;
 
+@ApplicationScoped
 public class ScopedPaymentProcessor {
     private static final Logger logger = LogManager.getLogger(ScopedPaymentProcessor.class);
 
@@ -23,18 +27,14 @@ public class ScopedPaymentProcessor {
     private final ScopedPinValidationService pinValidationService;
     private final ScopedMerchantValidationService merchantValidationService;
 
-    public ScopedPaymentProcessor(
-            ScopedCardValidationService cardValidationService, 
-            ScopedBalanceService balanceService, 
-            ScopedExpirationService expirationService, 
-            ScopedPinValidationService pinValidationService, 
-            ScopedMerchantValidationService merchantValidationService
-    ) {
-        this.balanceService = balanceService;
-        this.cardValidationService = cardValidationService;
-        this.expirationService = expirationService;
-        this.pinValidationService = pinValidationService;
-        this.merchantValidationService = merchantValidationService;
+    @Inject
+    public ScopedPaymentProcessor(CardRepository cardRepository) {
+        // Manually create scoped services, sharing the injected CardRepository
+        this.cardValidationService = new ScopedCardValidationService(cardRepository);
+        this.balanceService = new ScopedBalanceService(cardRepository);
+        this.expirationService = new ScopedExpirationService();
+        this.pinValidationService = new ScopedPinValidationService();
+        this.merchantValidationService = new ScopedMerchantValidationService();
     }
 
     public TransactionResult processTransaction(TransactionRequest request) throws Exception {

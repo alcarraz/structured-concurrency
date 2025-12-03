@@ -23,13 +23,7 @@ class ScopedPaymentProcessorTest extends BaseProcessorTest {
     @BeforeEach
     void setUp() {
         // Manually instantiate processor with scoped services (like the demo does)
-        processor = new ScopedPaymentProcessor(
-            new ScopedCardValidationService(new CardRepository()),
-            new ScopedBalanceService(new CardRepository()),
-            new ScopedExpirationService(),
-            new ScopedPinValidationService(),
-            new ScopedMerchantValidationService()
-        );
+        processor = new ScopedPaymentProcessor(new CardRepository());
     }
 
     @Test
