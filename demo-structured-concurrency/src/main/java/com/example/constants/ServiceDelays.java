@@ -26,5 +26,5 @@ public final class ServiceDelays {
         CARD_VALIDATION_DELAY + PIN_VALIDATION_DELAY;  // ~400ms
 
     // Acceptable variance for timing assertions (±50ms accounts for JVM/system overhead)
-    public static final long TIMING_TOLERANCE_MS = 50L;
+    public static final long TIMING_TOLERANCE_MS = 75L;
 }

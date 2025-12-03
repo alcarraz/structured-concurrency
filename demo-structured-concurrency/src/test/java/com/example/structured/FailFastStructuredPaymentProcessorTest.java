@@ -4,6 +4,12 @@ import com.example.BaseProcessorTest;
 import com.example.constants.ServiceDelays;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
+import com.example.repository.CardRepository;
+import com.example.services.BalanceService;
+import com.example.services.CardValidationService;
+import com.example.services.ExpirationService;
+import com.example.services.MerchantValidationService;
+import com.example.services.PinValidationService;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.DisplayName;
@@ -14,11 +20,23 @@ import java.math.BigDecimal;
 import static com.example.fixtures.DemoCards.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-@QuarkusTest
 class FailFastStructuredPaymentProcessorTest extends BaseProcessorTest {
 
-    @Inject
-    FailFastStructuredPaymentProcessor processor;
+    CardRepository cardRepository = new CardRepository();
+    BalanceService balanceService = new BalanceService(cardRepository);
+    CardValidationService cardValidationService = new CardValidationService(cardRepository);
+    ExpirationService expirationService = new ExpirationService();
+    PinValidationService pinValidationService = new PinValidationService();
+    MerchantValidationService merchantValidationService = new MerchantValidationService();
+
+    FailFastStructuredPaymentProcessor processor = new FailFastStructuredPaymentProcessor(
+            balanceService,
+            cardValidationService,
+            expirationService,
+            pinValidationService,
+            merchantValidationService
+    );
+    
 
     @Test
     @DisplayName("Success scenario completes in expected time (~700ms)")

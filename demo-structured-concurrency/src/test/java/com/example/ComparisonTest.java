@@ -4,6 +4,12 @@ import com.example.constants.ServiceDelays;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.reactive.BasicReactivePaymentProcessor;
+import com.example.repository.CardRepository;
+import com.example.services.BalanceService;
+import com.example.services.CardValidationService;
+import com.example.services.ExpirationService;
+import com.example.services.MerchantValidationService;
+import com.example.services.PinValidationService;
 import com.example.structured.FailFastStructuredPaymentProcessor;
 import com.example.structured.StructuredPaymentProcessor;
 import io.quarkus.test.junit.QuarkusTest;
@@ -13,17 +19,38 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@QuarkusTest
 class ComparisonTest extends BaseProcessorTest {
 
-    @Inject
-    BasicReactivePaymentProcessor reactive;
+    CardRepository cardRepository = new CardRepository();
+    BalanceService balanceService = new BalanceService(cardRepository);
+    CardValidationService cardValidationService = new CardValidationService(cardRepository);
+    ExpirationService expirationService = new ExpirationService();
+    PinValidationService pinValidationService = new PinValidationService();
+    MerchantValidationService merchantValidationService = new MerchantValidationService();
+    BasicReactivePaymentProcessor reactive = new BasicReactivePaymentProcessor(
+            balanceService,
+            cardValidationService,
+            expirationService,
+            pinValidationService,
+            merchantValidationService
+    );
 
-    @Inject
-    StructuredPaymentProcessor structured;
+    StructuredPaymentProcessor structured = new StructuredPaymentProcessor(
+            balanceService,
+            cardValidationService,
+            expirationService,
+            pinValidationService,
+            merchantValidationService
+ 
+    );
 
-    @Inject
-    FailFastStructuredPaymentProcessor failFast;
+    FailFastStructuredPaymentProcessor failFast = new FailFastStructuredPaymentProcessor(
+            balanceService,
+            cardValidationService,
+            expirationService,
+            pinValidationService,
+            merchantValidationService
+    );
 
     @Test
     @DisplayName("Success scenarios have similar timing across all processors")
