@@ -49,36 +49,48 @@ public class ScopedPaymentProcessor {
 
                     // PATH A: Fork merchant validation
                     createValidationTask(merchantValidationService, globalScope);
+                    
+                    // PATH B: Fork consumer validation (card + nested validations)
+                    // Returns CardValidationResult so we can extract the Card after join
+                    StructuredTaskScope.Subtask<Card> consumerValidation =
+                        globalScope.fork(() -> {
+                            // Sequential: Validate card first
+                            CardValidationResult cardResult = cardValidationService.validate();
 
-                    // PATH B: Execute consumer validation directly in main thread
-                    // Sequential: Validate card first
-                    CardValidationResult cardResult = cardValidationService.validate();
+                            // Pattern match on card result
+                            Card card = switch (cardResult) {
+                                case CardValidationResult.Success(Card c) -> c;
+                                case CardValidationResult.Failure(String msg) ->
+                                    throw new com.example.services.ValidationException(msg);
+                            };
 
-                    // Pattern match on card result
-                    Card card = switch (cardResult) {
-                        case CardValidationResult.Success(Card c) -> c;
-                        case CardValidationResult.Failure(String msg) ->
-                            throw new com.example.services.ValidationException(msg);
-                    };
+                            // Establish CARD scoped context for nested validations
+                            return ScopedValue.where(CARD, card).call(() -> {
+                                // Level 2: Nested scope with parallel balance/expiration/pin
+                                try (var consumerScope = StructuredTaskScope.open()) {
 
-                    // Establish CARD scoped context for nested validations AND transfer
+                                    // Fork parallel validations (inherit both scoped values)
+                                    createValidationTask(balanceService, consumerScope);
+                                    createValidationTask(expirationService, consumerScope);
+                                    createValidationTask(pinValidationService, consumerScope);
+
+                                    // Wait for all nested validations
+                                    consumerScope.join();
+
+                                    // Return the CardValidationResult with the card
+                                    return card;
+                                }
+                            });
+                        });
+
+                    // Wait for both parallel paths (merchant + consumer)
+                    globalScope.join();
+
+                    Card card = consumerValidation.get();
+
+                    // All validations passed - perform transfer
+                    // Re-establish CARD context for transfer
                     return ScopedValue.where(CARD, card).call(() -> {
-                        // Level 2: Nested scope with parallel balance/expiration/pin
-                        try (var consumerScope = StructuredTaskScope.open()) {
-
-                            // Fork parallel validations (inherit both scoped values)
-                            createValidationTask(balanceService, consumerScope);
-                            createValidationTask(expirationService, consumerScope);
-                            createValidationTask(pinValidationService, consumerScope);
-
-                            // Wait for all nested validations (runs in parallel with merchant)
-                            consumerScope.join();
-                        }
-
-                        // NOW wait for merchant validation to complete
-                        globalScope.join();
-
-                        // All validations passed - perform transfer (within same CARD context)
                         balanceService.transfer();
 
                         long processingTime = System.currentTimeMillis() - startTime;

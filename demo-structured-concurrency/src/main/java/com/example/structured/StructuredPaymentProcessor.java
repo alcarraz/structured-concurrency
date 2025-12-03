@@ -11,7 +11,6 @@ import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.StructuredTaskScope.Joiner;
@@ -23,15 +22,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * Structured Concurrency implementation with merchant validation in parallel
- * while consumer validation executes in the main thread.
+ * Structured Concurrency implementation with parallel merchant and consumer validation,
+ * followed by nested parallel card validations.
  * <p>
  * Flow:
- * 1. Fork merchant validation (runs in parallel)
- * 2. Main thread: Validate Card (sequential prerequisite)
- * 3. Nested parallel (if card OK): Validate Balance, PIN, Expiration
- * 4. Wait for merchant completion
- * 5. Transfer (if all OK)
+ * 1. Parallel: Validate Merchant AND Validate Card
+ * 2. Parallel (if card OK): Validate Balance, PIN, Expiration
+ * 3. Transfer (if all OK)
  */
 @ApplicationScoped
 public class StructuredPaymentProcessor implements StructuredProcessor {
@@ -62,39 +59,45 @@ public class StructuredPaymentProcessor implements StructuredProcessor {
         long startTime = System.currentTimeMillis();
         logger.info("🚀 Starting STRUCTURED transaction processing for merchant {}", request.merchant());
 
-        // Step 1: Fork merchant validation, execute consumer in main thread
+        // Step 1: Parallel - Validate Merchant AND Consumer (Card)
         try (var globalScope = StructuredTaskScope.open()) {
 
-            // Fork merchant validation (runs in parallel)
+            // Fork merchant validation
             Subtask<ValidationResult> merchantValidation = globalScope.fork(() ->
                 merchantValidationService.validate(request));
 
-            // Execute consumer validation directly in main thread
-            CardValidationResult cardResult = cardValidationService.validate(request);
+            // Fork consumer validation path (card + nested parallel validations)
+            Subtask<CardValidationResult> cardValidation = globalScope.fork(() -> {
+                // First validate card
+                CardValidationResult cardResult = cardValidationService.validate(request);
 
-            // Pattern match on the result
-            if (cardResult instanceof CardValidationResult.Success(Card card)) {
-                // Step 2: Parallel - Validate Balance, PIN and Expiration (with Card)
-                try (var consumerScope = StructuredTaskScope.open(Joiner.<ValidationResult>allSuccessfulOrThrow())) {
-                    // Pass the card to card-aware services
-                    consumerScope.fork(() -> expirationService.validate(request, card));
-                    consumerScope.fork(() -> pinValidationService.validate(request, card));
-                    consumerScope.fork(() -> balanceService.validate(request, card));
+                // Pattern match on the result
+                return switch (cardResult) {
+                    case CardValidationResult.Success(Card card) -> {
 
-                    Optional<CardValidationResult> failure = consumerScope.join()
-                            .map(Subtask::get)
-                            .filter(ValidationResult.Failure.class::isInstance)
-                            .map(ValidationResult.Failure.class::cast)
-                            .findFirst()
-                            .map(r -> CardValidationResult.failure(r.message()));
-                    if (failure.isPresent()) cardResult = failure.get();
-                }
-            }
+                        // Step 2: Parallel - Validate Balance, PIN and Expiration (with Card)
+                        try (var consumerScope = StructuredTaskScope.open(Joiner.<ValidationResult>allSuccessfulOrThrow())) {
+                            // Pass the card to card-aware services
+                            consumerScope.fork(() -> expirationService.validate(request, card));
+                            consumerScope.fork(() -> pinValidationService.validate(request, card));
+                            consumerScope.fork(() -> balanceService.validate(request, card));
 
-            // Wait for merchant validation to complete
+                            yield consumerScope.join()
+                                    .map(Subtask::get)
+                                    .filter(ValidationResult.Failure.class::isInstance)
+                                    .map(ValidationResult.Failure.class::cast)
+                                    .findFirst()
+                                    .map(r -> CardValidationResult.failure(r.message()))
+                                    .orElse(cardResult);
+                        }
+                    }
+                    case CardValidationResult.Failure failure -> failure;
+                };
+            });
             globalScope.join();
+            
             ValidationResult merchantResult = merchantValidation.get();
-
+            CardValidationResult cardResult = cardValidation.get();
             if (ValidationResult.success(merchantResult) && cardResult instanceof CardValidationResult.Success(Card card)) {
                 balanceService.transfer(request, card);
                 long processingTime = System.currentTimeMillis() - startTime;
