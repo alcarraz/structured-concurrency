@@ -1,3 +1,7 @@
+---
+geometry: margin=2cm
+output: pdf_document
+---
 # Script: 40-Minute Interactive Presentation
 ## Structured Concurrency + Scoped Values in Java 25
 
@@ -14,6 +18,7 @@
 - **Terminal 2**: `./gradlew quarkusDev` (start 10 min before talk)
 
 ### Browser Setup
+
 - **Tab 1**: http://localhost:8080 (Web UI)
 - Verify cards are loaded
 - Create test cards:
