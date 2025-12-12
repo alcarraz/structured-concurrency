@@ -13,7 +13,7 @@ Este repositorio contiene material de demostración para una presentación sobre
 
 **Contenido:**
 - Aplicación Java con demos comparativos de diferentes enfoques de concurrencia
-- Presentación LaTeX con transparencias de la charla
+- [Presentación LaTeX con transparencias de la charla](presentacion/structured-concurrency-presentation.tex), [ver pdf](presentacion/structured-concurrency-presentation.pdf)
 
 **Propósito:** Comparar y contrastar diferentes enfoques para manejar concurrencia en Java, desde programación reactiva tradicional (CompletableFuture) hasta las nuevas características de Java 25 (Structured Concurrency y Scoped Values).
 
