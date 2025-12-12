@@ -1,0 +1,26 @@
+@startuml
+start
+
+fork
+  :Validación Comercio;
+fork again
+  :Validación Tarjeta;
+  fork
+    :Validar Saldo
+    y Bloquear Fondos;
+  fork again
+    :Validar fecha de vencimiento;
+  fork again
+    :Validar PIN;
+  end fork
+end fork
+
+if (¿Todas las\nvalidaciones OK?) then (Sí)
+  :Transferir Fondos;
+  stop
+else (No)
+  :Liberar Fondos;
+  stop
+endif
+
+@enduml

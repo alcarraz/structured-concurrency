@@ -17,8 +17,10 @@ Este repositorio contiene material de demostración para una presentación sobre
 
 **Propósito:** Comparar y contrastar diferentes enfoques para manejar concurrencia en Java, desde programación reactiva tradicional (CompletableFuture) hasta las nuevas características de Java 25 (Structured Concurrency y Scoped Values).
 
-**:information_source: Nota:** Este README es trabajo en progreso, aún faltan secciones comentando el código auxiliar y explicación de la UI, puedes agregar este repositorio a tu watch list de GitHub (voy a notificar mediante una discusión cada vez que haga un commit relevante) o seguirme en LinkedIn para enterarte cuando lo vaya completando. 
-Esta versión permite entender los puntos de entrada a las clases que implementan la parte más relevante de la presentción.
+**:information_source: Nota:** 
+> Este README es trabajo en progreso, aún faltan secciones comentando el código auxiliar y explicación de la UI, puedes agregar este repositorio a tu watch list de GitHub (voy a notificar mediante una discusión cada vez que haga un commit relevante) o seguirme en [LinkedIn](https://www.linkedin.com/in/andresalcarraz/) para enterarte cuando lo vaya completando.
+> 
+> Esta versión permite entender los puntos de entrada a las clases que implementan la parte más relevante de la presentción.
 
 ---
 
@@ -32,39 +34,7 @@ En este flujo, asumimos que se necesita validar la tarjeta para obtener la cuent
 
 ### Flujo de Validación
 
-```plantuml
-@startuml
-start
-
-fork
-  :Validación Comercio;
-fork again
-  :Validación Tarjeta;
-  fork
-    :Validar Saldo
-    y Bloquear Fondos;
-  fork again
-    :Validar fecha de vencimiento;
-  fork again
-    :Validar PIN;
-  end fork
-end fork
-
-if (¿Todas las\nvalidaciones OK?) then (Sí)
-  :Transferir Fondos;
-  stop
-else (No)
-  :Liberar Fondos;
-  stop
-endif
-
-@enduml
-```
-
-> **Nota:** PlantUML no se renderiza nativamente en GitHub. Para visualizar el diagrama:
-> - Usa extensiones de navegador como [PlantUML Viewer](https://chrome.google.com/webstore/detail/plantuml-viewer/)
-> - Copia el código en [PlantUML Online Editor](https://www.plantuml.com/plantuml/uml/)
-> - O genera una imagen con `plantuml README.md` (requiere tener PlantUML instalado)
+![Flujo de Validación](docs/flujo-validacion.png)
 
 **Desafío:** ¿Cómo coordinamos estas validaciones paralelas de forma clara, segura y eficiente?
 
