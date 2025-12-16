@@ -1,7 +1,6 @@
 package com.example.structured;
 
 import com.example.BaseProcessorTest;
-import com.example.constants.ServiceDelays;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.repository.CardRepository;
@@ -10,8 +9,6 @@ import com.example.services.CardValidationService;
 import com.example.services.ExpirationService;
 import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +41,7 @@ class StructuredPaymentProcessorTest extends BaseProcessorTest {
         assertTrue(result.success());
         assertTimingWithinRange(
             result.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME,
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME,
             "Structured success"
         );
     }
@@ -59,7 +56,7 @@ class StructuredPaymentProcessorTest extends BaseProcessorTest {
         assertFalse(result.success());
         assertTimingWithinRange(
             result.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME,  // Awaits all
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME,  // Awaits all
             "Structured expired card (await-all)"
         );
     }
@@ -74,7 +71,7 @@ class StructuredPaymentProcessorTest extends BaseProcessorTest {
         assertFalse(result.success());
         assertTimingWithinRange(
             result.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME,  // Awaits all
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME,  // Awaits all
             "Structured invalid PIN (await-all)"
         );
     }

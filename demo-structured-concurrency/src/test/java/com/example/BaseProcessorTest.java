@@ -14,6 +14,16 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public abstract class BaseProcessorTest {
 
+    // Acceptable variance for timing assertions
+    protected static final long TIMING_TOLERANCE_MS = 75L;
+    protected static final long EXPECTED_INVALID_PIN_FAIL_FAST =
+        ServiceDelays.CARD_VALIDATION_DELAY + ServiceDelays.PIN_VALIDATION_DELAY;  // ~400ms
+    protected static final long EXPECTED_EXPIRED_CARD_FAIL_FAST =
+        ServiceDelays.CARD_VALIDATION_DELAY + ServiceDelays.EXPIRATION_VALIDATION_DELAY;  // ~300ms
+    // Calculated expected times for common scenarios (long for timing comparisons)
+    protected static final long EXPECTED_SUCCESS_TIME =
+        Math.max(ServiceDelays.MERCHANT_VALIDATION_DELAY,
+                 ServiceDelays.CARD_VALIDATION_DELAY + ServiceDelays.BALANCE_VALIDATION_DELAY);  // ~700ms
     protected long startTime;
 
     @BeforeEach
@@ -25,12 +35,12 @@ public abstract class BaseProcessorTest {
      * Assert that actual timing is within tolerance of expected.
      */
     protected void assertTimingWithinRange(long actualMs, long expectedMs, String scenario) {
-        long lowerBound = expectedMs - ServiceDelays.TIMING_TOLERANCE_MS;
-        long upperBound = expectedMs + ServiceDelays.TIMING_TOLERANCE_MS;
+        long lowerBound = expectedMs - TIMING_TOLERANCE_MS;
+        long upperBound = expectedMs + TIMING_TOLERANCE_MS;
 
         assertTrue(actualMs >= lowerBound && actualMs <= upperBound,
             String.format("%s: Expected %dms (±%dms), but was %dms",
-                scenario, expectedMs, ServiceDelays.TIMING_TOLERANCE_MS, actualMs));
+                scenario, expectedMs, TIMING_TOLERANCE_MS, actualMs));
     }
 
     /**

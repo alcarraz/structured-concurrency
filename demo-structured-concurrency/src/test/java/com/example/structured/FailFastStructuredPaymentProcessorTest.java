@@ -46,7 +46,7 @@ class FailFastStructuredPaymentProcessorTest extends BaseProcessorTest {
         assertTrue(result.success());
         assertTimingWithinRange(
             result.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME,
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME,
             "Fail-fast success"
         );
     }
@@ -62,7 +62,7 @@ class FailFastStructuredPaymentProcessorTest extends BaseProcessorTest {
         assertTrue(result.message().contains("expired"));
         assertTimingWithinRange(
             result.processingTimeMs(),
-            ServiceDelays.EXPECTED_EXPIRED_CARD_FAIL_FAST,
+            BaseProcessorTest.EXPECTED_EXPIRED_CARD_FAIL_FAST,
             "Fail-fast expired card"
         );
     }
@@ -78,7 +78,7 @@ class FailFastStructuredPaymentProcessorTest extends BaseProcessorTest {
         assertTrue(result.message().contains("PIN"));
         assertTimingWithinRange(
             result.processingTimeMs(),
-            ServiceDelays.EXPECTED_INVALID_PIN_FAIL_FAST,
+            BaseProcessorTest.EXPECTED_INVALID_PIN_FAIL_FAST,
             "Fail-fast invalid PIN"
         );
     }

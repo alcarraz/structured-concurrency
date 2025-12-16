@@ -14,17 +14,4 @@ public final class ServiceDelays {
     public static final int MERCHANT_VALIDATION_DELAY = 500;
     public static final int BALANCE_VALIDATION_DELAY = 600;  // Slowest
 
-    // Calculated expected times for common scenarios (long for timing comparisons)
-    public static final long EXPECTED_SUCCESS_TIME =
-        Math.max(MERCHANT_VALIDATION_DELAY,
-                 CARD_VALIDATION_DELAY + BALANCE_VALIDATION_DELAY);  // ~700ms
-
-    public static final long EXPECTED_EXPIRED_CARD_FAIL_FAST =
-        CARD_VALIDATION_DELAY + EXPIRATION_VALIDATION_DELAY;  // ~300ms
-
-    public static final long EXPECTED_INVALID_PIN_FAIL_FAST =
-        CARD_VALIDATION_DELAY + PIN_VALIDATION_DELAY;  // ~400ms
-
-    // Acceptable variance for timing assertions (±50ms accounts for JVM/system overhead)
-    public static final long TIMING_TOLERANCE_MS = 75L;
 }

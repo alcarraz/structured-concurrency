@@ -1,6 +1,5 @@
 package com.example;
 
-import com.example.constants.ServiceDelays;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.reactive.BasicReactivePaymentProcessor;
@@ -12,8 +11,6 @@ import com.example.services.MerchantValidationService;
 import com.example.services.PinValidationService;
 import com.example.structured.FailFastStructuredPaymentProcessor;
 import com.example.structured.StructuredPaymentProcessor;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -63,11 +60,11 @@ class ComparisonTest extends BaseProcessorTest {
 
         // All should be around 700ms
         assertTimingWithinRange(reactiveResult.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME, "Reactive success");
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME, "Reactive success");
         assertTimingWithinRange(structuredResult.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME, "Structured success");
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME, "Structured success");
         assertTimingWithinRange(failFastResult.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME, "Fail-fast success");
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME, "Fail-fast success");
     }
 
     @Test
@@ -80,11 +77,11 @@ class ComparisonTest extends BaseProcessorTest {
 
         // Reactive waits for all (~700ms)
         assertTimingWithinRange(reactiveResult.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME, "Reactive expired (awaits all)");
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME, "Reactive expired (awaits all)");
 
         // Fail-fast terminates early (~300ms)
         assertTimingWithinRange(failFastResult.processingTimeMs(),
-            ServiceDelays.EXPECTED_EXPIRED_CARD_FAIL_FAST, "Fail-fast expired");
+            BaseProcessorTest.EXPECTED_EXPIRED_CARD_FAIL_FAST, "Fail-fast expired");
 
         // Verify speedup
         long speedup = reactiveResult.processingTimeMs() - failFastResult.processingTimeMs();

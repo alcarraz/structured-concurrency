@@ -1,7 +1,6 @@
 package com.example.scopedvalues;
 
 import com.example.BaseProcessorTest;
-import com.example.constants.ServiceDelays;
 import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.repository.CardRepository;
@@ -36,7 +35,7 @@ class ScopedPaymentProcessorTest extends BaseProcessorTest {
         assertTrue(result.success());
         assertTimingWithinRange(
             result.processingTimeMs(),
-            ServiceDelays.EXPECTED_SUCCESS_TIME,
+            BaseProcessorTest.EXPECTED_SUCCESS_TIME,
             "Scoped values success"
         );
     }
@@ -64,7 +63,7 @@ class ScopedPaymentProcessorTest extends BaseProcessorTest {
         // Scoped processor throws exceptions for fail-fast behavior
         assertTimingWithinRange(
             result.processingTimeMs(),
-            ServiceDelays.EXPECTED_EXPIRED_CARD_FAIL_FAST,  // Fails fast
+            BaseProcessorTest.EXPECTED_EXPIRED_CARD_FAIL_FAST,  // Fails fast
             "Scoped values expired card (fail-fast)"
         );
     }
