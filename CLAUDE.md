@@ -116,6 +116,23 @@ Java Demo Code → Referenced in Presentation → Live Demo During Talk
 └── out/                            # Build output directory
 ```
 
+## README Enhancement Plan
+
+**Active Plan:** [/home/alcarraz/.claude/plans/virtual-riding-pnueli.md](/home/alcarraz/.claude/plans/virtual-riding-pnueli.md)
+
+**Status:** In Progress - Etapa 1 (Para LinkedIn)
+
+**Current tasks:**
+- [ ] Sección Web UI con descripciones detalladas
+- [ ] Sección Código Auxiliar con disclaimer (desarrollado por IA)
+- [ ] Placeholder para escenarios reales
+- [ ] Actualizar nota inicial del README
+- [ ] Remover numeración de headers en "Procesadores Implementados"
+
+**Instructions:** Update this section when working on the README. Mark items with [x] when completed. Keep this in sync with the plan file.
+
+---
+
 ## For More Information
 
 - Java demos and API documentation: [`demo-structured-concurrency/CLAUDE.md`](demo-structured-concurrency/CLAUDE.md)
