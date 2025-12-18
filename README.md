@@ -17,11 +17,6 @@ Este repositorio contiene material de demostración para una presentación sobre
 
 **Propósito:** Comparar y contrastar diferentes enfoques para manejar concurrencia en Java, desde programación reactiva tradicional (CompletableFuture) hasta las nuevas características de Java 25 (Structured Concurrency y Scoped Values).
 
-**:information_source: Nota:** 
-> Este README es trabajo en progreso, aún faltan secciones comentando el código auxiliar y explicación de la UI, puedes agregar este repositorio a tu watch list de GitHub (voy a notificar mediante una discusión cada vez que haga un commit relevante) o seguirme en [LinkedIn](https://www.linkedin.com/in/andresalcarraz/) para enterarte cuando lo vaya completando.
-> 
-> Esta versión permite entender los puntos de entrada a las clases que implementan la parte más relevante de la presentción.
-
 ---
 
 ## El Caso de Uso: Procesamiento de una transacción de compra
@@ -561,7 +556,7 @@ jconf-structured-concurrency/
 
 ## Contexto: Transacciones de Tarjetas en el Mundo Real
 
-**🚧 Sección en desarrollo**
+**🚧 Sección a desarrollar si hay interés**
 
 El caso de uso presentado simplifica el procesamiento de transacciones de tarjetas para fines didácticos. Esta sección explicará superficialmente cómo funcionan las transacciones reales y cómo se mapean los conceptos de la demo.
 
@@ -585,3 +580,4 @@ Material educativo para JConf 2025.
 
 **Autor:** Andrés Alcarraz
 **Contacto:** alcarraz@gmail.com
+**LinkedIn:** https://www.linkedin.com/in/andresalcarraz/ 
