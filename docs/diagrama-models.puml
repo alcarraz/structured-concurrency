@@ -1,0 +1,65 @@
+@startuml diagrama-models
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "DTOs" {
+  class TransactionRequest <<record>> {
+    +String cardNumber
+    +String expirationDate
+    +String pin
+    +BigDecimal amount
+    +String merchant
+    +LocalDateTime timestamp
+  }
+
+  class TransactionResult <<record>> {
+    +boolean success
+    +String transactionId
+    +BigDecimal amount
+    +String message
+    +LocalDateTime processedAt
+    +long processingTimeMs
+  }
+}
+
+package "Domain Model" {
+  class Card <<record>> {
+    +String cardNumber
+    +String expirationDate
+    +String pin
+    +BigDecimal balance
+    +String description
+  }
+}
+
+package "Validation Results" {
+  interface ValidationResult <<sealed interface>> {
+    Success | Failure
+  }
+
+  class "ValidationResult_Success" <<record>>
+  class "ValidationResult_Failure" <<record>> {
+    +String message
+  }
+
+  interface CardValidationResult <<sealed interface>> {
+    Success(Card) | Failure
+  }
+
+  class "CardValidationResult_Success" <<record>> {
+    +Card card
+  }
+
+  class "CardValidationResult_Failure" <<record>> {
+    +String message
+  }
+
+  ValidationResult <|.. "ValidationResult_Success"
+  ValidationResult <|.. "ValidationResult_Failure"
+  CardValidationResult <|.. "CardValidationResult_Success"
+  CardValidationResult <|.. "CardValidationResult_Failure"
+  "CardValidationResult_Success" --> Card
+}
+
+@enduml

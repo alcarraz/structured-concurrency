@@ -1,0 +1,76 @@
+@startuml
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Base Services" {
+  interface ValidationService {
+    +validate(TransactionRequest): ValidationResult
+  }
+
+  interface CardAwareValidationService {
+    +validate(TransactionRequest, Card): ValidationResult
+  }
+
+  class MerchantValidationService
+
+  class CardValidationService {
+    +validate(TransactionRequest): CardValidationResult
+  }
+
+  class BalanceService {
+    +validate(request, card): ValidationResult
+    +releaseAmount(request, card)
+    +transfer(request, card)
+  }
+
+  class ExpirationService
+  class PinValidationService
+
+  ValidationService <|.. MerchantValidationService
+  CardAwareValidationService <|.. BalanceService
+  CardAwareValidationService <|.. ExpirationService
+  CardAwareValidationService <|.. PinValidationService
+}
+package "Scoped Services" {
+  interface ScopedValidationService {
+    +validate(): ValidationResult
+  }
+  class ScopedMerchantValidationService {
+    Lee TRANSACTION_REQUEST
+  }
+
+  class ScopedBalanceService {
+    Lee TRANSACTION_REQUEST y CARD
+  }
+
+  class ScopedExpirationService {
+    Lee TRANSACTION_REQUEST y CARD
+  }
+
+  class ScopedPinValidationService {
+    Lee TRANSACTION_REQUEST y CARD
+  }
+
+  MerchantValidationService <|-- ScopedMerchantValidationService
+  BalanceService <|-- ScopedBalanceService
+  ExpirationService <|-- ScopedExpirationService
+  PinValidationService <|-- ScopedPinValidationService
+
+  ScopedValidationService <|.. ScopedMerchantValidationService
+  ScopedValidationService <|.. ScopedBalanceService
+  ScopedValidationService <|.. ScopedExpirationService
+  ScopedValidationService <|.. ScopedPinValidationService
+}
+
+note bottom of ScopedBalanceService
+  Los servicios Scoped extienden servicios base
+  para reutilizar su implementación
+  y acceden al contexto vía ScopedValue.get()
+  sin recibir parámetros
+end note
+
+' Forzar layout vertical: Scoped Services debajo de Base Services
+ "Base Services" -[hidden]down- "Scoped Services"
+
+@enduml

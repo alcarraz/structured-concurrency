@@ -1,0 +1,61 @@
+@startuml diagrama-procesadores
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Reactive Processors" {
+  interface ReactivePaymentProcessor {
+    +processTransaction(TransactionRequest): CompletableFuture<TransactionResult>
+  }
+
+  class BasicReactivePaymentProcessor {
+    Espera a TODAS las validaciones
+
+  }
+
+  class ReactiveWithExceptionsPaymentProcessor {
+    Manejo de excepciones
+    Sigue esperando todas
+
+  }
+
+  class FixedReactiveFailFastPaymentProcessor {
+    Fail-fast MANUAL
+    ~80 líneas de coordinación
+
+  }
+
+  ReactivePaymentProcessor <|.. BasicReactivePaymentProcessor
+  ReactivePaymentProcessor <|.. ReactiveWithExceptionsPaymentProcessor
+  ReactivePaymentProcessor <|.. FixedReactiveFailFastPaymentProcessor
+}
+
+package "Structured Processors" {
+  interface StructuredProcessor {
+    +processTransaction(TransactionRequest): TransactionResult
+  }
+
+  class StructuredPaymentProcessor {
+    Espera a TODAS las validaciones
+    StructuredTaskScope.open()
+
+  }
+
+  class FailFastStructuredPaymentProcessor {
+    Fail-fast AUTOMÁTICO
+    Cancela resto al primer fallo
+
+  }
+
+  StructuredProcessor <|.. StructuredPaymentProcessor
+  StructuredProcessor <|.. FailFastStructuredPaymentProcessor
+
+  class ScopedPaymentProcessor {
+    +ScopedValue<TransactionRequest> TRANSACTION_REQUEST
+    +ScopedValue<Card> CARD
+  }
+  
+  StructuredProcessor <|.. ScopedPaymentProcessor 
+}
+
+@enduml

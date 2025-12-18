@@ -1,0 +1,35 @@
+@startuml diagrama-structured
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Processors" {
+  interface StructuredProcessor {
+    +processTransaction(TransactionRequest): TransactionResult
+  }
+
+  class StructuredPaymentProcessor {
+    Espera a TODAS las validaciones
+    StructuredTaskScope.open()
+    +MerchantValidationService merchantValidationService
+    +CardValidationService cardValidationService
+    +BalanceService balanceService
+    +ExpirationService expirationService
+    +PinValidationService pinValidationService
+  }
+
+  class FailFastStructuredPaymentProcessor {
+    Fail-fast AUTOMÁTICO
+    Cancela resto al primer fallo
+    +MerchantValidationService merchantValidationService
+    +CardValidationService cardValidationService
+    +BalanceService balanceService
+    +ExpirationService expirationService
+    +PinValidationService pinValidationService
+  }
+
+  StructuredProcessor <|.. StructuredPaymentProcessor
+  StructuredProcessor <|.. FailFastStructuredPaymentProcessor
+}
+
+@enduml

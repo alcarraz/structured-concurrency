@@ -1,0 +1,18 @@
+@startuml diagrama-scoped
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Scoped Processor" {
+  class ScopedPaymentProcessor {
+    +ScopedValue<TransactionRequest> TRANSACTION_REQUEST
+    +ScopedValue<Card> CARD
+    +processTransaction(TransactionRequest): TransactionResult
+    +ScopedMerchantValidationService scopedMerchantValidationService
+    +ScopedBalanceService scopedBalanceService
+    +ScopedExpirationService scopedExpirationService
+    +ScopedPinValidationService scopedPinValidationService
+  }
+}
+
+@enduml

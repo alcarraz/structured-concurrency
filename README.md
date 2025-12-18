@@ -42,7 +42,7 @@ En este flujo, asumimos que se necesita validar la tarjeta para obtener la cuent
 
 ## Servicios de Validación
 
-Cada validación del flujo está implementada por un servicio especializado. Estos servicios simulan operaciones de red con retrasos definidos en constantes para poder observar el comportamiento de los diferentes enfoques de concurrencia.
+Cada validación del flujo está implementada por un/pl servicio especializado. Estos servicios simulan operaciones de red con retrasos definidos en constantes para poder observar el comportamiento de los diferentes enfoques de concurrencia.
 
 **:information_source: Nota:** Si bien todos los servicios de validación del consumidor usan el mismo repositorio para simplificar el ejemplo. En la realidad es razonable que estén implementados por servicios diferentes, por ejemplo, uno de contabilidad para el saldo y un [HSM](https://es.wikipedia.org/wiki/HSM) para el PIN.
 Lo más forzado es la fecha de vencimiento, que normalmente se guardaría en la misma entidad que la info de la tarjeta. Un ejemplo más apropiado sería la validación de CVV, que involucra también al HSM pero se puede ejecutar en paralelo con el PIN, pues es un comando separado.
@@ -64,8 +64,8 @@ Lo más forzado es la fecha de vencimiento, que normalmente se guardaría en la 
    - **Propósito:** Valida saldo disponible e implementa bloqueo de fondos (two-phase commit)
    - **Retraso simulado:** 600ms (el más lento)
    - **Mecanismo especial:**
-     - `validate()` - Bloquea fondos agregándolos a transacciones pendientes
-     - `releaseAmount()` - Libera fondos si otra validación falla
+     - `validate()` - Valida el saldo y si tiene fondos, bloquea fondos agregándolos a transacciones pendientes
+     - `releaseAmount()` - Libera fondos si otra validación falla, este método no tiene ningún efecto si no se bloqueó el fondo en la transacción actual
      - `transfer()` - Debita el saldo si todas las validaciones pasan
    - **Implementación:** [`BalanceService.java`](demo-structured-concurrency/src/main/java/com/example/services/BalanceService.java)
 
@@ -79,17 +79,55 @@ Lo más forzado es la fecha de vencimiento, que normalmente se guardaría en la 
    - **Retraso simulado:** 300ms
    - **Implementación:** [`PinValidationService.java`](demo-structured-concurrency/src/main/java/com/example/services/PinValidationService.java)
 
+### Modelo de Datos
+
+![Diagrama de Models](docs/diagrama-models.png)
+
+El modelo de datos está organizado en packages:
+- **DTOs**: Request del cliente y su respuesta
+- **Domain Model**: `Card` tiene la info necesaria para validar los datos de la tarjeta 
+- **Validation Results**: Sealed interfaces para resultados (ValidationResult y CardValidationResult), en el caso de validación exitosa del número tarjeta, se devuelve la entidad con los datos de la tarjeta. 
+
+### Interfaces y Servicios de Validación
+
+![Diagrama de Servicios](docs/diagrama-servicios.png)
+
+Los servicios de validación están organizados por interfaces:
+- **ValidationService**: Para validaciones simples
+- **CardAwareValidationService**: Para validaciones que requieren datos de tarjeta, se pasa la tarjeta obtenida por `CardValidationService`
+
 ---
 
 ## Procesadores Implementados
 
 Este proyecto implementa el flujo anterior usando diferentes paradigmas de concurrencia. Los procesadores están organizados desde los más simples hasta los más sofisticados.
+### Diagrama de clases
 
-### 1. Procesadores Básicos (Await-All)
+Todos los procesadores implementan el mismo flujo de validación pero con diferentes paradigmas de concurrencia:
 
-Estos procesadores esperan a que **todas** las validaciones terminen, independientemente de si alguna falla.
+![Diagrama de Procesadores](docs/diagrama-procesadores.png)
 
-#### 1.1 BasicReactivePaymentProcessor
+**Características de cada tipo:**
+
+- **Reactive Processors (CompletableFuture)**:
+    - [`BasicReactivePaymentProcessor`](#basicreactivepaymentprocessor): Espera todas las validaciones con `allOf()`
+    - [`ReactiveWithExceptionsPaymentProcessor`](#nota-sobre-reactivewithexceptionspaymentprocessor): Muestra que la idea de fallo temprano automático de [`StructuredPaymentProcessor`](#failfaststructuredpaymentprocessor) no es tan simple para programación reactiva..
+    - [`FixedReactiveFailFastPaymentProcessor`](#fixedreactivefailfastpaymentprocessor): Intenta implementar fallo temprano con programación reactiva, código más complejo.
+
+- **Structured Processors (StructuredTaskScope)**:
+    - [`StructuredPaymentProcessor`](#structuredpaymentprocessor): Espera todas con gestión automática del ciclo de vida
+    - `FailFastStructuredPaymentProcessor`: Fail-fast automático al primer fallo, usando excepciones cuando los servicios no validan.
+
+- **Scoped Processors (Scoped Values)**:
+    - [`ScopedPaymentProcessor`](#scopedpaymentprocessor): Usa ScopedValue para propagación de contexto
+    - Servicios scoped acceden al contexto sin necesidad de recibir todos los parámetros.
+
+---
+### Procesadores Básicos (Await-All)
+
+Estos procesadores esperan a que **todas** las validaciones terminen, independientemente de si alguna de las paralelas falla antes.
+
+#### BasicReactivePaymentProcessor
 
 **Enfoque:** CompletableFuture (programación reactiva tradicional)
 
@@ -115,7 +153,7 @@ CompletableFuture<Card> cardValidation =
 CompletableFuture.allOf(merchantValidation, cardValidation).join();
 ```
 
-#### 1.2 StructuredPaymentProcessor
+#### StructuredPaymentProcessor
 
 **Enfoque:** Structured Concurrency (Java 25)
 
@@ -144,18 +182,18 @@ try (var globalScope = StructuredTaskScope.open()) {
 
 ---
 
-### 2. Procesadores Fail-Fast (Cancelación al Primer Fallo)
+### Procesadores Fail-Fast (Cancelación al Primer Fallo)
 
 Estos procesadores cancelan todas las tareas restantes tan pronto como detectan un fallo.
 
-#### 2.1 Nota sobre ReactiveWithExceptionsPaymentProcessor
+#### Nota sobre ReactiveWithExceptionsPaymentProcessor
 
 El procesador [`ReactiveWithExceptionsPaymentProcessor.java`](demo-structured-concurrency/src/main/java/com/example/reactive/ReactiveWithExceptionsPaymentProcessor.java) añade manejo de excepciones a la versión reactiva básica, pero **no soluciona el problema fundamental**: cuando una tarea lanza una excepción, las demás tareas continúan ejecutándose hasta completarse. No hay cancelación automática.
 
 - **Demo CLI:** `./gradlew demoReactiveExceptions`
 - **Endpoint REST:** `/api/reactive/with-exceptions`
 
-#### 2.2 FixedReactiveFailFastPaymentProcessor
+#### FixedReactiveFailFastPaymentProcessor
 
 **Enfoque:** CompletableFuture con fail-fast MANUAL
 
@@ -165,7 +203,7 @@ El procesador [`ReactiveWithExceptionsPaymentProcessor.java`](demo-structured-co
 - **Demo CLI:** `./gradlew demoFixedReactiveFailFast`
 - **Endpoint REST:** `/api/reactive/fail-fast`
 
-#### 2.3 FailFastStructuredPaymentProcessor
+#### FailFastStructuredPaymentProcessor
 
 **Enfoque:** Structured Concurrency con fail-fast AUTOMÁTICO
 
@@ -204,7 +242,7 @@ try (var globalScope = StructuredTaskScope.open()) {
 
 ---
 
-### 3. Propagación de Contexto con Scoped Values
+### Propagación de Contexto con Scoped Values
 
 **Ubicación:** `demo-structured-concurrency/src/main/java/com/example/scopedvalues/`
 

@@ -6,6 +6,7 @@ import com.example.model.TransactionRequest;
 import com.example.model.TransactionResult;
 import com.example.model.ValidationResult;
 import com.example.repository.CardRepository;
+import com.example.structured.StructuredProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.logging.log4j.LogManager;
@@ -14,10 +15,11 @@ import org.apache.logging.log4j.Logger;
 import java.util.concurrent.StructuredTaskScope;
 
 @ApplicationScoped
-public class ScopedPaymentProcessor {
+public class ScopedPaymentProcessor implements StructuredProcessor {
     private static final Logger logger = LogManager.getLogger(ScopedPaymentProcessor.class);
 
     // Define scoped values for the transaction request and card
+    
     public static final ScopedValue<TransactionRequest> TRANSACTION_REQUEST = ScopedValue.newInstance();
     public static final ScopedValue<Card> CARD = ScopedValue.newInstance();
 
@@ -37,7 +39,7 @@ public class ScopedPaymentProcessor {
         this.merchantValidationService = new ScopedMerchantValidationService();
     }
 
-    public TransactionResult processTransaction(TransactionRequest request) throws Exception {
+    public TransactionResult processTransaction(TransactionRequest request) {
         long startTime = System.currentTimeMillis();
         logger.info("🚀 Starting SCOPED VALUES transaction processing for merchant {}", request.merchant());
 

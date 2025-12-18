@@ -1,0 +1,45 @@
+@startuml diagrama-reactive
+
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Processors" {
+  interface ReactivePaymentProcessor {
+    +processTransaction(TransactionRequest): CompletableFuture<TransactionResult>
+  }
+
+  class BasicReactivePaymentProcessor {
+    Espera a TODAS las validaciones
+    +MerchantValidationService merchantValidationService
+    +CardValidationService cardValidationService
+    +BalanceService balanceService
+    +ExpirationService expirationService
+    +PinValidationService pinValidationService
+  }
+
+  class ReactiveWithExceptionsPaymentProcessor {
+    Manejo de excepciones
+    Sigue esperando todas
+    +MerchantValidationService merchantValidationService
+    +CardValidationService cardValidationService
+    +BalanceService balanceService
+    +ExpirationService expirationService
+    +PinValidationService pinValidationService
+  }
+
+  class FixedReactiveFailFastPaymentProcessor {
+    Fail-fast MANUAL
+    ~80 líneas de coordinación
+    +MerchantValidationService merchantValidationService
+    +CardValidationService cardValidationService
+    +BalanceService balanceService
+    +ExpirationService expirationService
+    +PinValidationService pinValidationService
+  }
+
+  ReactivePaymentProcessor <|.. BasicReactivePaymentProcessor
+  ReactivePaymentProcessor <|.. ReactiveWithExceptionsPaymentProcessor
+  ReactivePaymentProcessor <|.. FixedReactiveFailFastPaymentProcessor
+}
+
+@enduml
